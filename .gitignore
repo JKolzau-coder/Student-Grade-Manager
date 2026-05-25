@@ -1,0 +1,310 @@
+
+# ---- base (cognitive-core) ----
+# =============================================================================
+# .gitignore — cognitive-core base template
+# Applied automatically during install. Language-specific rules are appended
+# from the selected language pack.
+# =============================================================================
+
+# ---- OS generated files ----
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.AppleDouble
+.LSOverride
+Icon?
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.fuse_hidden*
+.nfs*
+nohup.out
+*.stackdump
+
+# ---- Build output (common) ----
+build/
+out/
+dist/
+
+# ---- IDE / Editor files ----
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+*.code-workspace
+
+# JetBrains (IntelliJ IDEA, WebStorm, PyCharm, GoLand, Rider, CLion, RubyMine, PhpStorm, DataGrip)
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+cmake-build-*/
+.ijwb/
+
+# Eclipse / Spring Tool Suite (STS)
+.project
+.classpath
+.settings/
+.metadata/
+.recommenders/
+*.launch
+.externalToolBuilders/
+.buildpath
+.factorypath
+.apt_generated/
+.apt_generated_tests/
+.sts4-cache/
+.springBeans
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+nbactions.xml
+nb-configuration.xml
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.VisualState.xml
+[Dd]ebugPublic/
+
+# Xcode
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+DerivedData/
+
+# Android Studio
+.gradle/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.cxx/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim / Neovim
+*.swp
+*.swo
+*.swn
+.netrwhist
+Session.vim
+.undodir/
+tags
+.lvimrc
+
+# Emacs
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list/
+tramp
+.\#*
+.projectile
+.dir-locals.el
+
+# TextMate
+*.tmproj
+*.tmproject
+tmtags
+
+# Atom
+.atom/
+*.cson
+
+# Notepad++
+nppBackup/
+
+# Kate / KDevelop
+.kdev4/
+*.kdev4
+
+# Fleet (JetBrains)
+.fleet/
+
+# Zed
+.zed/
+
+# Cursor
+.cursor/
+
+# AI / LLM tool runtime (2025+)
+.aider*
+.windsurf/
+.cline/
+.continue/
+.codex/
+.amazonq/
+.tabnine_root
+
+# ---- Secrets and credentials ----
+.env
+.env.*
+!.env.template
+!.env.tpl
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+credentials.json
+service-account*.json
+**/secrets/
+.secret
+.secrets
+.htpasswd
+.envrc
+.npmrc
+.docker/config.json
+
+# IaC and cloud credentials
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# .terraform.lock.hcl — commit this (reproducible provider versions)
+.pulumi/
+cdk.out/
+.cdk.staging/
+cdk.context.json
+.aws/credentials
+.kube/config
+.netrc
+vault-token
+
+# JetBrains HTTP Client secrets (outside .idea/)
+http-client.private.env.json
+
+# ---- Logs ----
+*.log
+*.log.*
+logs/
+
+# ---- Archives and binaries ----
+*.tar.gz
+*.tgz
+*.zip
+*.rar
+*.7z
+*.gz
+!*.gz.md
+*.bz2
+*.xz
+*.iso
+*.dmg
+
+# ---- Temporary files ----
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
+*.pid
+*.seed
+
+# ---- Docker runtime ----
+docker-compose.override.yml
+
+# ---- Monitoring data (runtime, not config) ----
+prometheus_data/
+grafana_data/
+
+# ---- Test artifacts ----
+coverage/
+.nyc_output/
+htmlcov/
+test-results/
+test-reports/
+
+# ---- cognitive-core runtime (machine-local) ----
+.claude/cognitive-core/version.json
+.claude/cognitive-core/last-check
+.claude/cognitive-core/security.log
+.claude/cognitive-core/.session-started
+.claude/gitignore
+.claude/session.lock.d/
+.claude/sessions.json
+.cognitive-core/
+.mcp.json
+.project-board.env
+
+# ---- java (cognitive-core) ----
+# ---- Java ----
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Annotation processors

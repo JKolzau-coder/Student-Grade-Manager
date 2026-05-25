@@ -1,0 +1,339 @@
+#!/bin/bash
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# cognitive-core shared hook library
+# Sourced by all hook scripts for config loading and JSON output helpers
+
+# CRLF self-heal: strip carriage returns if sourced from a CRLF environment (Windows Git Bash)
+if [[ "${BASH_SOURCE[0]}" == *$'\r'* ]] 2>/dev/null; then
+    _cc_self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_lib.sh"
+    sed -i.bak 's/\r$//' "$_cc_self" 2>/dev/null && rm -f "${_cc_self}.bak"
+fi
+
+# Resolve project directory
+CC_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+
+# Load configuration (resolution order: project root > .claude/ > user defaults > env)
+_cc_load_config() {
+    local conf=""
+    if [ -f "${CC_PROJECT_DIR}/cognitive-core.conf" ]; then
+        conf="${CC_PROJECT_DIR}/cognitive-core.conf"
+    elif [ -f "${CC_PROJECT_DIR}/.claude/cognitive-core.conf" ]; then
+        conf="${CC_PROJECT_DIR}/.claude/cognitive-core.conf"
+    elif [ -f "${HOME}/.cognitive-core/defaults.conf" ]; then
+        conf="${HOME}/.cognitive-core/defaults.conf"
+    fi
+    if [ -n "$conf" ]; then
+        # shellcheck disable=SC1090
+        source "$conf"
+    fi
+}
+
+# Recursive grep using ripgrep when available, falling back to grep -r
+# Usage: _cc_rg [--all] [grep-compatible flags] "pattern" [path]
+#   --all   Search all files including gitignored (passes --no-ignore to rg)
+# Translates --include/--exclude to rg -g syntax. Strips -r/-E (rg defaults).
+# Follows _cc_compute_sha256 pattern: detect available tool, never auto-install.
+_cc_rg() {
+    local use_no_ignore=false
+    local rg_args=("--no-heading" "--color=never")
+    local grep_args=()
+
+    # Parse arguments
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --all)
+                use_no_ignore=true
+                shift
+                ;;
+            -r|-R)
+                grep_args+=("$1")
+                shift
+                ;;  # strip for rg (recursive by default)
+            -E)
+                grep_args+=("$1")
+                shift
+                ;;  # strip for rg (ERE by default)
+            --include=*)
+                rg_args+=("-g" "${1#--include=}")
+                grep_args+=("$1")
+                shift
+                ;;
+            --include)
+                shift
+                rg_args+=("-g" "$1")
+                grep_args+=("--include=$1")
+                shift
+                ;;
+            --exclude=*)
+                rg_args+=("-g" "!${1#--exclude=}")
+                grep_args+=("$1")
+                shift
+                ;;
+            --exclude)
+                shift
+                rg_args+=("-g" "!$1")
+                grep_args+=("--exclude=$1")
+                shift
+                ;;
+            *)
+                rg_args+=("$1")
+                grep_args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    if [ "$use_no_ignore" = true ]; then
+        rg_args+=("--no-ignore")
+    fi
+
+    if command -v rg &>/dev/null; then
+        rg "${rg_args[@]}"
+    else
+        grep -r "${grep_args[@]}"
+    fi
+}
+
+# Output JSON using jq if available, otherwise fallback to printf
+# Usage: _cc_json_output "hookEventName" "fieldName" "fieldValue"
+_cc_json_session_context() {
+    local ctx="$1"
+    if command -v jq &>/dev/null; then
+        jq -n --arg ctx "$ctx" '{
+            hookSpecificOutput: {
+                hookEventName: "SessionStart",
+                additionalContext: $ctx
+            }
+        }'
+    else
+        local escaped
+        escaped=$(printf '%s' "$ctx" | sed 's/"/\\"/g' | tr '\n' '\\n')
+        printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}' "$escaped"
+    fi
+}
+
+_cc_json_pretool_deny() {
+    local reason="$1"
+    if command -v jq &>/dev/null; then
+        jq -n --arg reason "$reason" '{
+            hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "deny",
+                permissionDecisionReason: $reason
+            }
+        }'
+    else
+        local escaped
+        escaped=$(printf '%s' "$reason" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
+        printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}' "$escaped"
+    fi
+}
+
+# Structured deny with error classification
+# Usage: _cc_json_pretool_deny_structured "reason" "errorCategory" "isRetryable" ["suggestion"]
+# errorCategory: security | validation | permission | policy
+# isRetryable: true | false
+_cc_json_pretool_deny_structured() {
+    local reason="${1:-}"
+    local category="${2:-security}"
+    local retryable="${3:-false}"
+    local suggestion="${4:-}"
+
+    if command -v jq &>/dev/null; then
+        if [ -n "$suggestion" ]; then
+            jq -n --arg reason "$reason" --arg cat "$category" \
+                --argjson retry "$retryable" --arg sug "$suggestion" '{
+                hookSpecificOutput: {
+                    hookEventName: "PreToolUse",
+                    permissionDecision: "deny",
+                    permissionDecisionReason: $reason,
+                    errorCategory: $cat,
+                    isRetryable: $retry,
+                    suggestion: $sug
+                }
+            }'
+        else
+            jq -n --arg reason "$reason" --arg cat "$category" \
+                --argjson retry "$retryable" '{
+                hookSpecificOutput: {
+                    hookEventName: "PreToolUse",
+                    permissionDecision: "deny",
+                    permissionDecisionReason: $reason,
+                    errorCategory: $cat,
+                    isRetryable: $retry
+                }
+            }'
+        fi
+    else
+        local escaped
+        escaped=$(printf '%s' "$reason" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
+        local suggestion_field=""
+        if [ -n "$suggestion" ]; then
+            local escaped_sug
+            escaped_sug=$(printf '%s' "$suggestion" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
+            suggestion_field=$(printf ',"suggestion":"%s"' "$escaped_sug")
+        fi
+        printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s","errorCategory":"%s","isRetryable":%s%s}}' \
+            "$escaped" "$category" "$retryable" "$suggestion_field"
+    fi
+}
+
+_cc_json_posttool_context() {
+    local ctx="$1"
+    if command -v jq &>/dev/null; then
+        jq -n --arg ctx "$ctx" '{
+            hookSpecificOutput: {
+                hookEventName: "PostToolUse",
+                additionalContext: $ctx
+            }
+        }'
+    else
+        local escaped
+        escaped=$(printf '%s' "$ctx" | sed 's/"/\\"/g' | tr '\n' '\\n')
+        printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}' "$escaped"
+    fi
+}
+
+# PreToolUse "ask" decision (escalate to human)
+_cc_json_pretool_ask() {
+    local reason="$1"
+    if command -v jq &>/dev/null; then
+        jq -n --arg reason "$reason" '{
+            hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "ask",
+                permissionDecisionReason: $reason
+            }
+        }'
+    else
+        local escaped
+        escaped=$(printf '%s' "$reason" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\n' ' ')
+        printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"%s"}}' "$escaped"
+    fi
+}
+
+# Security event logging
+_cc_security_log() {
+    local level="$1" event="$2" detail="$3"
+    local logfile="${CC_PROJECT_DIR}/.claude/cognitive-core/security.log"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local logdir
+    logdir=$(dirname "$logfile")
+    [ -d "$logdir" ] || mkdir -p "$logdir"
+    echo "${timestamp} [${level}] ${event}: ${detail}" >> "$logfile"
+    # Log rotation: truncate if >1MB
+    if [ -f "$logfile" ] && [ "$(wc -c < "$logfile" | tr -d ' ')" -gt 1048576 ]; then
+        tail -500 "$logfile" > "${logfile}.tmp" && mv "${logfile}.tmp" "$logfile"
+    fi
+}
+
+# Version cache with mtime invalidation (#176)
+# Stores in project-local .claude/cognitive-core/ (not /tmp)
+_cc_version_cache_get() {
+    local cache_name="$1"
+    local source_files="$2"
+    local cache_dir="${CC_PROJECT_DIR}/.claude/cognitive-core"
+    local cache_file="${cache_dir}/.${cache_name}-version"
+
+    [ ! -f "$cache_file" ] && return 0
+
+    local cached
+    cached=$(cat "$cache_file" 2>/dev/null)
+    case "$cached" in
+        ''|*[!0-9]*) rm -f "$cache_file"; return 0 ;;
+    esac
+
+    local src
+    for src in $source_files; do
+        if [ -f "${CC_PROJECT_DIR}/${src}" ] && [ "${CC_PROJECT_DIR}/${src}" -nt "$cache_file" ]; then
+            rm -f "$cache_file"
+            return 0
+        fi
+    done
+
+    echo "$cached"
+}
+
+_cc_version_cache_set() {
+    local cache_name="$1"
+    local value="$2"
+    local cache_dir="${CC_PROJECT_DIR}/.claude/cognitive-core"
+    local cache_file="${cache_dir}/.${cache_name}-version"
+
+    case "$value" in
+        ''|*[!0-9]*) return 0 ;;
+    esac
+
+    [ -d "$cache_dir" ] && echo "$value" > "$cache_file"
+}
+
+# Cross-platform SHA256
+_cc_compute_sha256() {
+    local file="$1"
+    if command -v sha256sum &>/dev/null; then
+        sha256sum "$file" | awk '{print $1}'
+    elif command -v shasum &>/dev/null; then
+        shasum -a 256 "$file" | awk '{print $1}'
+    else
+        openssl dgst -sha256 "$file" | awk '{print $NF}'
+    fi
+}
+
+# Guard wrapper: isolates guard execution, catches errors
+_cc_guard_run() {
+    local guard_name="$1"
+    shift
+    local err_file="/tmp/cc_guard_err_$$"
+    if ! "$@" 2>"$err_file"; then
+        local err_msg
+        err_msg=$(cat "$err_file" 2>/dev/null || echo "unknown error")
+        _cc_security_log "ERROR" "guard-failure" "${guard_name}: ${err_msg}"
+        rm -f "$err_file"
+        return 0  # NEVER crash the framework
+    fi
+    rm -f "$err_file"
+}
+
+# Session-scoped domain cache for hooks (e.g., validate-fetch "don't ask again")
+# Cache file is scoped to the Claude session to prevent cross-session leakage.
+# Uses CLAUDE_SESSION_KEY (set by Claude Code) or falls back to parent PID.
+_cc_session_cache_file() {
+    local namespace="${1:-domains}"
+    local session_key="${CLAUDE_SESSION_KEY:-ppid_$$}"
+    local cache_dir="${TMPDIR:-/tmp}"
+    echo "${cache_dir}/cc-session-${namespace}-${session_key}"
+}
+
+# Add a value to the session cache (one entry per line, deduped)
+_cc_session_cache_add() {
+    local namespace="$1" value="$2"
+    local cache_file
+    cache_file=$(_cc_session_cache_file "$namespace")
+    # Append only if not already present
+    if [ ! -f "$cache_file" ] || ! grep -qxF "$value" "$cache_file" 2>/dev/null; then
+        echo "$value" >> "$cache_file"
+    fi
+}
+
+# Check if a value exists in the session cache
+_cc_session_cache_has() {
+    local namespace="$1" value="$2"
+    local cache_file
+    cache_file=$(_cc_session_cache_file "$namespace")
+    [ -f "$cache_file" ] && grep -qxF "$value" "$cache_file" 2>/dev/null
+}
+
+# Extract field from stdin JSON
+# Usage: echo "$JSON" | _cc_json_get ".tool_input.command"
+_cc_json_get() {
+    local path="$1"
+    if command -v jq &>/dev/null; then
+        jq -r "${path} // \"\"" 2>/dev/null
+    else
+        # Basic fallback: extract simple string fields
+        local key
+        key=$(echo "$path" | sed 's/.*\.//')
+        grep -o "\"${key}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | sed 's/.*: *"//;s/"$//'
+    fi
+}
