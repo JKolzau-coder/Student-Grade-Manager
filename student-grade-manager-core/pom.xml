@@ -122,6 +122,7 @@
         <configuration>
           <argLine>
             -javaagent:${org.mockito:mockito-core:jar}
+            -ea
           </argLine>
         </configuration>
       </plugin>

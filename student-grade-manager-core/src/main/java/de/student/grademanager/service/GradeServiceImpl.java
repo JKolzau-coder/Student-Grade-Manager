@@ -22,7 +22,9 @@ public class GradeServiceImpl implements GradeService {
     if (!students.containsKey(studentId)) {
       throw new IllegalArgumentException("Student not found: " + studentId);
     }
-    grades.get(studentId).add(new Grade(subject, value));
+    List<Grade> gradeList = grades.get(studentId);
+    assert gradeList != null : "grades map out of sync with students map for id " + studentId;
+    gradeList.add(new Grade(subject, value));
   }
 
   @Override
