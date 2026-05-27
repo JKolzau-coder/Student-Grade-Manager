@@ -1,6 +1,6 @@
 package de.student.grademanager.model;
 
-public class Grade {
+public final class Grade {
   private static final double MIN_GRADE = 1.0;
   private static final double MAX_GRADE = 5.0;
 
@@ -8,6 +8,9 @@ public class Grade {
   private final double value;
 
   public Grade(String subject, double value) {
+    if (subject == null) {
+      throw new IllegalArgumentException("subject must not be null");
+    }
     if (value < MIN_GRADE || value > MAX_GRADE) {
       throw new IllegalArgumentException("Grade must be between 1.0 and 5.0");
     }
