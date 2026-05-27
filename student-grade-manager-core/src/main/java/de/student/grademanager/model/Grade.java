@@ -7,6 +7,7 @@ public final class Grade {
   private final String subject;
   private final double value;
 
+  // Validation of grades according to the defined range of values
   public Grade(String subject, double value) {
     if (subject == null) {
       throw new IllegalArgumentException("subject must not be null");
@@ -21,3 +22,5 @@ public final class Grade {
   public String getSubject() { return subject; }
   public double getValue() { return value; }
 }
+
+ //Dies ist eine absichtlich zu lange Zeile die den Google-Style-Checkstyle-Check fuer  LineLength mit mehr als 100 Zeichen verletzen wird
