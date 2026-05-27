@@ -1,8 +1,9 @@
 package de.student.grademanager.service;
 
+import java.util.List;
+
 import de.student.grademanager.model.Grade;
 import de.student.grademanager.model.Student;
-import java.util.List;
 
 public interface GradeService {
   void addStudent(String name, int studentId);
