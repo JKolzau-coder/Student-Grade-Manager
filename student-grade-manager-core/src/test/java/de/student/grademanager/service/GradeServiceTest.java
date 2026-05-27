@@ -3,6 +3,8 @@ package de.student.grademanager.service;
 import de.student.grademanager.model.Student;
 import java.lang.reflect.Field;
 import java.util.Map;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -11,23 +13,35 @@ import static org.junit.Assert.fail;
 
 public class GradeServiceTest {
 
+  private GradeServiceImpl service;
+
+  @BeforeClass
+  public static void assertionsEnabledForAllTests() {
+    assertTrue(
+        "Tests muessen mit -ea laufen damit Assertions aktiv sind",
+        GradeServiceImpl.class.desiredAssertionStatus()
+    );
+  }
+
+  @Before
+  public void setUp() {
+    service = new GradeServiceImpl();
+  }
+
   @Test
   public void addStudentThenHasStudentReturnsTrue() {
-    GradeServiceImpl service = new GradeServiceImpl();
     service.addStudent("Bob", 2001);
     assertTrue(service.hasStudent(2001));
   }
 
   @Test
   public void calculateAverageWithNoGradesReturnsZero() {
-    GradeServiceImpl service = new GradeServiceImpl();
     service.addStudent("Carol", 2002);
     assertEquals(0.0, service.calculateAverage(2002), 0.001);
   }
 
   @Test
   public void calculateAverageWithTwoGradesReturnsCorrectAverage() {
-    GradeServiceImpl service = new GradeServiceImpl();
     service.addStudent("Dave", 2003);
     service.addGrade(2003, "Math", 2.0);
     service.addGrade(2003, "Physics", 3.0);
@@ -36,23 +50,12 @@ public class GradeServiceTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void addGradeForUnknownStudentThrowsException() {
-    GradeServiceImpl service = new GradeServiceImpl();
     service.addGrade(9999, "Math", 1.5);
-  }
-
-  @Test
-  public void assertionsAreEnabledInTestJvm() {
-    assertTrue(
-        "Tests muessen mit -ea laufen damit Assertions aktiv sind",
-        GradeServiceImpl.class.desiredAssertionStatus()
-    );
   }
 
   @Test
   @SuppressWarnings("unchecked")
   public void addGradeThrowsAssertionErrorWhenMapsOutOfSync() throws Exception {
-    GradeServiceImpl service = new GradeServiceImpl();
-
     Field studentsField = GradeServiceImpl.class.getDeclaredField("students");
     studentsField.setAccessible(true);
     Map<Integer, Student> students = (Map<Integer, Student>) studentsField.get(service);
@@ -72,7 +75,6 @@ public class GradeServiceTest {
 
   @Test
   public void getStudentReturnsCorrectStudent() {
-    GradeServiceImpl service = new GradeServiceImpl();
     service.addStudent("Alice", 3001);
     assertEquals("Alice", service.getStudent(3001).getName());
     assertEquals(3001, service.getStudent(3001).getStudentId());
@@ -80,7 +82,6 @@ public class GradeServiceTest {
 
   @Test
   public void getGradesReturnsAddedGrades() {
-    GradeServiceImpl service = new GradeServiceImpl();
     service.addStudent("Alice", 3002);
     service.addGrade(3002, "Math", 1.3);
     assertEquals(1, service.getGrades(3002).size());
@@ -89,13 +90,11 @@ public class GradeServiceTest {
 
   @Test
   public void getGradesReturnsEmptyListForUnknownStudent() {
-    GradeServiceImpl service = new GradeServiceImpl();
     assertTrue(service.getGrades(9999).isEmpty());
   }
 
   @Test
   public void multipleSubjectsAverageCorrectly() {
-    GradeServiceImpl service = new GradeServiceImpl();
     service.addStudent("Eve", 2004);
     service.addGrade(2004, "Math", 1.0);
     service.addGrade(2004, "Physics", 2.0);
