@@ -5,7 +5,7 @@ import java.util.regex.*;
 import java.util.stream.*;
 
 // Run from project root: java scripts/BugAgent.java [maxRetries]
-public class BugAgent {
+public class BuildAgent {
 
   private static final String MODULE = "student-grade-manager-core";
   private static final int DEFAULT_MAX_RETRIES = 3;

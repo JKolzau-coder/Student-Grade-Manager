@@ -130,10 +130,10 @@ jobs:
           node-version: '20'
       - name: Install Claude CLI
         run: npm install -g @anthropic-ai/claude-code
-      - name: Run bug-agent
+      - name: Run build-agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: java scripts/BugAgent.java
+        run: java scripts/BuildAgent.java
       - name: Commit and push fixes
         run: |
           git config user.name "build-fixer[bot]"
