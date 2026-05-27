@@ -1,6 +1,7 @@
 package de.student.grademanager.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,12 +9,10 @@ import java.util.Map;
 import de.student.grademanager.model.Grade;
 import de.student.grademanager.model.Student;
 
-// Access interface to GradeService methods
 public class GradeServiceImpl implements GradeService {
   private final Map<Integer, Student> students = new HashMap<>();
   private final Map<Integer, List<Grade>> grades = new HashMap<>();
 
-  // Validate syntax conformity of student credentials
   @Override
   public void addStudent(String name, int studentId) {
     students.put(studentId, new Student(name, studentId));
@@ -22,7 +21,6 @@ public class GradeServiceImpl implements GradeService {
         : "addStudent left maps inconsistent for id " + studentId;
   }
 
-  // Validate syntax conformity of grade parameters
   @Override
   public void addGrade(int studentId, String subject, double value) {
     if (!students.containsKey(studentId)) {
@@ -33,7 +31,6 @@ public class GradeServiceImpl implements GradeService {
     gradeList.add(new Grade(subject, value));
   }
 
-  // Calculate average grade for a student, ensuring the result is within the defined range
   @Override
   public double calculateAverage(int studentId) {
     List<Grade> studentGrades = grades.get(studentId);
@@ -61,7 +58,7 @@ public class GradeServiceImpl implements GradeService {
 
   @Override
   public List<Grade> getGrades(int studentId) {
-    List<Grade> studentGrades = grades.get(studentId);
-    return studentGrades != null ? studentGrades : new ArrayList<>();
+    List<Grade> list = grades.get(studentId);
+    return list != null ? Collections.unmodifiableList(list) : Collections.emptyList();
   }
 }
