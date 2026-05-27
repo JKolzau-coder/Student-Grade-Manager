@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!--
+    EI_EXPOSE_REP2: GradeService is an interface injected via constructor (DI pattern).
+    A defensive copy is not possible for interface types.
+  -->
+  <Match>
+    <Class name="de.student.grademanager.App"/>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+  </Match>
+</FindBugsFilter>

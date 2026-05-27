@@ -33,4 +33,9 @@ public class GradeTest {
   public void gradeAboveMaximumThrowsException() {
     new Grade("Math", 5.1);
   }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void nullSubjectThrowsException() {
+    new Grade(null, 2.0);
+  }
 }

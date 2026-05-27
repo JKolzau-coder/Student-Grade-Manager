@@ -71,6 +71,29 @@ public class GradeServiceTest {
   }
 
   @Test
+  public void getStudentReturnsCorrectStudent() {
+    GradeServiceImpl service = new GradeServiceImpl();
+    service.addStudent("Alice", 3001);
+    assertEquals("Alice", service.getStudent(3001).getName());
+    assertEquals(3001, service.getStudent(3001).getStudentId());
+  }
+
+  @Test
+  public void getGradesReturnsAddedGrades() {
+    GradeServiceImpl service = new GradeServiceImpl();
+    service.addStudent("Alice", 3002);
+    service.addGrade(3002, "Math", 1.3);
+    assertEquals(1, service.getGrades(3002).size());
+    assertEquals("Math", service.getGrades(3002).get(0).getSubject());
+  }
+
+  @Test
+  public void getGradesReturnsEmptyListForUnknownStudent() {
+    GradeServiceImpl service = new GradeServiceImpl();
+    assertTrue(service.getGrades(9999).isEmpty());
+  }
+
+  @Test
   public void multipleSubjectsAverageCorrectly() {
     GradeServiceImpl service = new GradeServiceImpl();
     service.addStudent("Eve", 2004);
