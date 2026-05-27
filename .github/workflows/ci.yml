@@ -15,6 +15,10 @@ on:
         required: false
         default: 'Manueller Testlauf'
 
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   compile:
     name: Compile
