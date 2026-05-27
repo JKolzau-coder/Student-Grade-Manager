@@ -1,13 +1,16 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Grund für manuellen Start'
+        required: false
+        default: 'Manueller Testlauf'
+
+permissions:
+  contents: read
+  checks: write
 
 jobs:
   compile:
@@ -43,6 +46,13 @@ jobs:
           cache: maven
       - name: Run tests
         run: mvn test -pl student-grade-manager-core
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: JUnit Test Results
+          path: '**/surefire-reports/TEST-*.xml'
+          reporter: java-junit
 
   checkstyle:
     name: Checkstyle
