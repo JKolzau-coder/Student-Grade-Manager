@@ -54,12 +54,56 @@ public final class App {
     }
   }
 
+  @SuppressWarnings("PMD.SystemPrintln")
+  public void runInputLoop(Scanner scanner) {
+    System.out.println("Studenten erfassen (leerer Name beendet die Eingabe):");
+    while (true) {
+      System.out.print("Name (Enter zum Beenden): ");
+      String name = scanner.nextLine().trim();
+      if (name.isEmpty()) {
+        break;
+      }
+      try {
+        System.out.print("Student-ID: ");
+        int studentId = Integer.parseInt(scanner.nextLine().trim());
+        System.out.print("Fach: ");
+        String subject = scanner.nextLine().trim();
+        System.out.print("Note (1.0 - 5.0): ");
+        double gradeValue = Double.parseDouble(scanner.nextLine().trim());
+        if (!service.hasStudent(studentId)) {
+          service.addStudent(name, studentId);
+        }
+        service.addGrade(studentId, subject, gradeValue);
+        logger.info("Eintrag gespeichert: {} – {} {}", name, subject, gradeValue);
+      } catch (IllegalArgumentException e) {
+        logger.error("Eingabe ungueltig: {}", e.getMessage());
+      }
+    }
+  }
+
   public void printComparison() {
     if (interactiveStudentId == -1) {
       logger.warn("Kein interaktiver Student fuer Vergleich vorhanden");
       return;
     }
     printComparisonTable(DEMO_STUDENT_ID, interactiveStudentId);
+  }
+
+  @SuppressWarnings("PMD.SystemPrintln")
+  public void printTable() {
+    List<Student> all = service.getAllStudents();
+    if (all.isEmpty()) {
+      logger.warn("Keine Studenten vorhanden");
+      return;
+    }
+    String sep = "-".repeat(62);
+    System.out.println(sep);
+    System.out.printf("%-15s %-8s %-14s %-7s %s%n", "Name", "ID", "Fach", "Note", "Schnitt");
+    System.out.println(sep);
+    for (Student student : all) {
+      printStudentRows(student, service.getGrades(student.getStudentId()));
+      System.out.println(sep);
+    }
   }
 
   @SuppressWarnings("PMD.SystemPrintln")
@@ -106,7 +150,7 @@ public final class App {
     App app = new App(new GradeServiceImpl());
     app.run();
     Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8);
-    app.runInteractive(scanner);
-    app.printComparison();
+    app.runInputLoop(scanner);
+    app.printTable();
   }
 }

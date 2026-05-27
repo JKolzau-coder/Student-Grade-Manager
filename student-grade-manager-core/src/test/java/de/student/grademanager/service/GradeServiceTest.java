@@ -2,6 +2,7 @@ package de.student.grademanager.service;
 
 import de.student.grademanager.model.Student;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -100,5 +101,20 @@ public class GradeServiceTest {
     service.addGrade(2004, "Physics", 2.0);
     service.addGrade(2004, "English", 3.0);
     assertEquals(2.0, service.calculateAverage(2004), 0.001);
+  }
+
+  @Test
+  public void getAllStudentsReturnsEmptyListWhenNoStudents() {
+    assertTrue(service.getAllStudents().isEmpty());
+  }
+
+  @Test
+  public void getAllStudentsReturnsSortedById() {
+    service.addStudent("Zara", 5002);
+    service.addStudent("Aaron", 5001);
+    List<Student> all = service.getAllStudents();
+    assertEquals(2, all.size());
+    assertEquals(5001, all.get(0).getStudentId());
+    assertEquals(5002, all.get(1).getStudentId());
   }
 }

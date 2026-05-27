@@ -4,6 +4,7 @@ import de.student.grademanager.model.Grade;
 import de.student.grademanager.model.Student;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,5 +60,12 @@ public class GradeServiceImpl implements GradeService {
   public List<Grade> getGrades(int studentId) {
     List<Grade> list = grades.get(studentId);
     return list != null ? Collections.unmodifiableList(list) : Collections.emptyList();
+  }
+
+  @Override
+  public List<Student> getAllStudents() {
+    List<Student> result = new ArrayList<>(students.values());
+    result.sort(Comparator.comparingInt(Student::getStudentId));
+    return Collections.unmodifiableList(result);
   }
 }
