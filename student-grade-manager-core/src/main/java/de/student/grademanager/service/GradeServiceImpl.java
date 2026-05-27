@@ -8,7 +8,9 @@ import java.util.Map;
 
 import de.student.grademanager.model.Grade;
 import de.student.grademanager.model.Student;
+import org.springframework.stereotype.Service;
 
+@Service
 public class GradeServiceImpl implements GradeService {
   private final Map<Integer, Student> students = new HashMap<>();
   private final Map<Integer, List<Grade>> grades = new HashMap<>();

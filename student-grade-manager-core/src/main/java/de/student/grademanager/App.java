@@ -3,14 +3,16 @@ package de.student.grademanager;
 import de.student.grademanager.model.Grade;
 import de.student.grademanager.model.Student;
 import de.student.grademanager.service.GradeService;
-import de.student.grademanager.service.GradeServiceImpl;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Scanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-public final class App {
+@SpringBootApplication
+public final class App implements CommandLineRunner {
   private static final Logger logger = LoggerFactory.getLogger(App.class);
   private static final int DEMO_STUDENT_ID = 1001;
   private final GradeService service;
@@ -20,7 +22,12 @@ public final class App {
     this.service = service;
   }
 
-  public void run() {
+  public static void main(String[] args) {
+    SpringApplication.run(App.class, args);
+  }
+
+  @Override
+  public void run(String... args) {
     logger.info("Student Grade Manager started");
     try {
       service.addStudent("Alice", DEMO_STUDENT_ID);
@@ -100,13 +107,5 @@ public final class App {
             "", "", grade.getSubject(), grade.getValue());
       }
     }
-  }
-
-  public static void main(String[] args) {
-    App app = new App(new GradeServiceImpl());
-    app.run();
-    Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8);
-    app.runInteractive(scanner);
-    app.printComparison();
   }
 }
