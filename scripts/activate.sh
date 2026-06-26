@@ -9,11 +9,11 @@ mvn() {
   local exit_code=$?
   if [ $exit_code -ne 0 ]; then
     echo ""
-    echo "=== mvn fehlgeschlagen — build-agent wird gestartet ==="
-    java "$_ACTIVATE_DIR/BuildAgent.java"
+    echo "=== mvn fehlgeschlagen — build-wrapper wird gestartet ==="
+    java "$_ACTIVATE_DIR/BuildWrapper.java"
     return $?
   fi
   return $exit_code
 }
 
-echo "build-agent aktiviert. Alle mvn-Fehler werden automatisch behoben."
+echo "build-wrapper aktiviert. Alle mvn-Fehler werden automatisch behoben."

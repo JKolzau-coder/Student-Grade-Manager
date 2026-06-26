@@ -4,8 +4,8 @@ import java.util.*;
 import java.util.regex.*;
 import java.util.stream.*;
 
-// Run from project root: java scripts/BugAgent.java [maxRetries]
-public class BuildAgent {
+// Run from project root: java scripts/BuildWrapper.java [maxRetries]
+public class BuildWrapper {
 
   private static final String MODULE = "student-grade-manager-core";
   private static final int DEFAULT_MAX_RETRIES = 3;
@@ -13,18 +13,18 @@ public class BuildAgent {
   private final Path projectRoot;
   private final int maxRetries;
 
-  public BugAgent(Path projectRoot, int maxRetries) {
+  public BuildWrapper(Path projectRoot, int maxRetries) {
     this.projectRoot = projectRoot;
     this.maxRetries = maxRetries;
   }
 
   public static void main(String[] args) throws Exception {
     int maxRetries = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_MAX_RETRIES;
-    new BugAgent(Path.of("").toAbsolutePath(), maxRetries).run();
+    new BuildWrapper(Path.of("").toAbsolutePath(), maxRetries).run();
   }
 
   private void run() throws Exception {
-    System.out.println("=== bug-agent — max " + maxRetries + " Versuche ===");
+    System.out.println("=== build-wrapper — max " + maxRetries + " Versuche ===");
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       System.out.println("\n--- Versuch " + attempt + " / " + maxRetries + " ---");
