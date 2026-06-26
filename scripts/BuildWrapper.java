@@ -88,7 +88,11 @@ public class BuildWrapper {
 
   private String detectMavenGate(String output) {
     if (output.contains("COMPILATION ERROR")) return "compile";
-    if (output.contains("maven-surefire-plugin")) return "surefire";
+    if (output.contains("maven-surefire-plugin")) {
+      // CVE regression test failures → same fix path as OSV scanner (pom.xml upgrade allowed)
+      if (output.contains("GHSA-") || output.contains("CVE-")) return "osv";
+      return "surefire";
+    }
     if (output.contains("maven-checkstyle-plugin")) return "checkstyle";
     if (output.contains("maven-pmd-plugin")) return "pmd";
     if (output.contains("spotbugs-maven-plugin")) return "spotbugs";
@@ -195,20 +199,27 @@ public class BuildWrapper {
         MODULE);
   }
 
-  private String parseOsvFindings(String osvOutput) {
-    return Arrays.stream(osvOutput.split("\n"))
+  private String parseOsvFindings(String output) {
+    // OSV scanner table format: lines containing GHSA-/CVE- and pipe separators
+    List<String> tableLines = Arrays.stream(output.split("\n"))
+        .filter(l -> (l.contains("GHSA-") || l.contains("CVE-")) && l.contains("|"))
+        .collect(Collectors.toList());
+
+    if (!tableLines.isEmpty()) {
+      return tableLines.stream().map(l -> {
+        String[] parts = l.split("\\|");
+        if (parts.length >= 7) {
+          return String.format("  Package %-45s  current: %-10s  fix to: %s",
+              parts[4].trim(), parts[5].trim(), parts[6].trim());
+        }
+        return "  " + l.trim();
+      }).collect(Collectors.joining("\n"));
+    }
+
+    // Fallback: surefire CVE assertion messages (e.g. "GHSA-xxxx: Gson 2.8.5 < 2.8.9 ...")
+    return Arrays.stream(output.split("\n"))
         .filter(l -> l.contains("GHSA-") || l.contains("CVE-"))
-        .map(l -> {
-          String[] parts = l.split("\\|");
-          if (parts.length >= 7) {
-            String pkg = parts[4].trim();
-            String current = parts[5].trim();
-            String fixed = parts[6].trim();
-            return String.format("  Package %-45s  current: %-10s  fix to: %s",
-                pkg, current, fixed);
-          }
-          return "  " + l.trim();
-        })
+        .map(l -> "  " + l.trim())
         .collect(Collectors.joining("\n"));
   }
 
