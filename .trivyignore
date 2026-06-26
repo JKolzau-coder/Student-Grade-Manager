@@ -1,0 +1,4 @@
+# CVE-2026-40973: Spring Boot Arbitrary Code Execution
+# Fixed in spring-boot 3.5.14 / 4.0.6 — requires upgrade beyond Spring Boot 3.4.x
+# Accepted risk: application has no remote code execution attack surface (no HTTP server).
+CVE-2026-40973
