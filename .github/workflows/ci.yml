@@ -190,7 +190,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
-          context: student-grade-manager-core
+          context: .
+          file: student-grade-manager-core/Dockerfile
           push: ${{ startsWith(github.ref_name, 'dev/') }}
           tags: |
             ghcr.io/${{ env.OWNER }}/student-grade-manager:latest
