@@ -15,6 +15,10 @@ on:
         description: 'Grund für manuellen Start'
         required: false
         default: 'Manueller Testlauf'
+      test:
+        description: 'Einzelner Test (leer = alle, z.B. DependencyCveTest)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -54,7 +58,13 @@ jobs:
           distribution: 'temurin'
           cache: maven
       - name: Run tests
-        run: mvn test -pl student-grade-manager-core
+        run: |
+          FILTER="${{ github.event.inputs.test }}"
+          if [ -n "$FILTER" ]; then
+            mvn test -pl student-grade-manager-core -Dtest="$FILTER"
+          else
+            mvn test -pl student-grade-manager-core
+          fi
       - name: Publish test results
         uses: dorny/test-reporter@v1
         if: always()
