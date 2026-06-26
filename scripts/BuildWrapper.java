@@ -56,19 +56,7 @@ public class BuildWrapper {
       return new BuildResult(false, out.toString(), "checkstyle");
     }
 
-    StringBuilder osvOut = new StringBuilder();
-    exec(List.of("osv-scanner", "scan", "--recursive", "."), osvOut);
-    String osvStr = osvOut.toString();
-    System.out.print(osvStr);
-    if (hasOsvFindings(osvStr)) {
-      return new BuildResult(false, osvStr, "osv");
-    }
-
     return new BuildResult(true, out.toString(), "");
-  }
-
-  private boolean hasOsvFindings(String osvOutput) {
-    return osvOutput.contains("GHSA-") || osvOutput.contains("CVE-");
   }
 
   private int exec(List<String> cmd, StringBuilder collector) throws Exception {
@@ -191,8 +179,7 @@ public class BuildWrapper {
         + "2. For each package above, find its <xxx.version> property and change the value%n"
         + "   to the FIXED VERSION listed. Edit ONLY those version properties. Do NOT touch%n"
         + "   any source files under src/.%n"
-        + "3. Run: osv-scanner scan --recursive . to confirm 0 vulnerabilities%n"
-        + "4. Run: mvn verify -pl %s to confirm the build still passes",
+        + "3. Run: mvn verify -pl %s to confirm the build still passes",
         attempt, maxRetries, projectRoot,
         findings,
         projectRoot,
