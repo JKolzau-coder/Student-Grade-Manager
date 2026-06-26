@@ -36,14 +36,10 @@ public class BuildWrapper {
         return;
       }
 
-      String gate = detectGate(result.output());
-      String errors = extractErrors(result.output());
-      List<String> files = findAffectedFiles(result.output());
-
-      System.out.println("Fehlgeschlagenes Gate: " + gate);
+      System.out.println("Fehlgeschlagenes Gate: " + result.gate());
       System.out.println("Rufe Claude CLI auf...");
 
-      callClaude(gate, attempt, errors, files);
+      callClaude(result.gate(), attempt, result.output());
     }
 
     System.err.println("\nBuild nach " + maxRetries + " Versuchen immer noch fehlerhaft.");
@@ -51,14 +47,28 @@ public class BuildWrapper {
   }
 
   private BuildResult runGates() throws Exception {
-    StringBuilder output = new StringBuilder();
+    StringBuilder out = new StringBuilder();
 
-    if (exec(List.of("mvn", "verify", "-pl", MODULE), output) != 0) {
-      return new BuildResult(false, output.toString());
+    if (exec(List.of("mvn", "verify", "-pl", MODULE), out) != 0) {
+      return new BuildResult(false, out.toString(), detectMavenGate(out.toString()));
     }
-    return new BuildResult(
-        exec(List.of("mvn", "checkstyle:check", "-pl", MODULE), output) == 0,
-        output.toString());
+    if (exec(List.of("mvn", "checkstyle:check", "-pl", MODULE), out) != 0) {
+      return new BuildResult(false, out.toString(), "checkstyle");
+    }
+
+    StringBuilder osvOut = new StringBuilder();
+    exec(List.of("osv-scanner", "scan", "--recursive", "."), osvOut);
+    String osvStr = osvOut.toString();
+    System.out.print(osvStr);
+    if (hasOsvFindings(osvStr)) {
+      return new BuildResult(false, osvStr, "osv");
+    }
+
+    return new BuildResult(true, out.toString(), "");
+  }
+
+  private boolean hasOsvFindings(String osvOutput) {
+    return osvOutput.contains("GHSA-") || osvOutput.contains("CVE-");
   }
 
   private int exec(List<String> cmd, StringBuilder collector) throws Exception {
@@ -76,7 +86,7 @@ public class BuildWrapper {
     return p.waitFor();
   }
 
-  private String detectGate(String output) {
+  private String detectMavenGate(String output) {
     if (output.contains("COMPILATION ERROR")) return "compile";
     if (output.contains("maven-surefire-plugin")) return "surefire";
     if (output.contains("maven-checkstyle-plugin")) return "checkstyle";
@@ -90,7 +100,11 @@ public class BuildWrapper {
         .filter(l -> l.startsWith("[ERROR]")
             || (l.contains("[WARNING]") && l.contains(".java"))
             || l.contains("Tests run")
-            || l.contains("COMPILATION ERROR"))
+            || l.contains("COMPILATION ERROR")
+            || l.contains("GHSA-")
+            || l.contains("CVE-")
+            || l.contains("known vulnerabilit")
+            || l.contains("FIXED VERSION"))
         .limit(60)
         .collect(Collectors.joining("\n"));
   }
@@ -114,9 +128,94 @@ public class BuildWrapper {
     return paths;
   }
 
-  private void callClaude(String gate, int attempt, String errors, List<String> files)
-      throws Exception {
-    String prompt = String.format(
+  private void callClaude(String gate, int attempt, String output) throws Exception {
+    String prompt = "osv".equals(gate)
+        ? buildOsvPrompt(attempt, output)
+        : buildDefaultPrompt(gate, attempt, output);
+
+    String claudeBin = findClaude();
+    new ProcessBuilder(claudeBin, "-p", prompt, "--allowedTools", "Edit,Read,Bash")
+        .directory(projectRoot.toFile())
+        .inheritIO()
+        .start()
+        .waitFor();
+  }
+
+  private String findClaude() throws IOException {
+    // 1. claude already on PATH
+    try {
+      Process p = new ProcessBuilder("which", "claude")
+          .redirectErrorStream(true).start();
+      String line = new BufferedReader(new InputStreamReader(p.getInputStream()))
+          .readLine();
+      if (p.waitFor() == 0 && line != null && !line.isBlank()) return line.trim();
+    } catch (Exception ignored) { }
+
+    // 2. common npx / global install locations
+    List<String> candidates = List.of(
+        System.getProperty("user.home") + "/.npm-global/bin/claude",
+        "/opt/homebrew/bin/claude",
+        "/usr/local/bin/claude"
+    );
+    for (String c : candidates) {
+      if (new File(c).canExecute()) return c;
+    }
+
+    // 3. any claude binary under ~/.npm/_npx
+    Path npx = Path.of(System.getProperty("user.home"), ".npm", "_npx");
+    if (Files.exists(npx)) {
+      try (Stream<Path> walk = Files.walk(npx, 4)) {
+        Optional<Path> found = walk
+            .filter(p -> p.getFileName().toString().equals("claude") && p.toFile().canExecute())
+            .findFirst();
+        if (found.isPresent()) return found.get().toString();
+      }
+    }
+
+    throw new IOException("claude CLI not found. Install via: npm install -g @anthropic-ai/claude-code");
+  }
+
+  private String buildOsvPrompt(int attempt, String osvOutput) {
+    String findings = parseOsvFindings(osvOutput);
+    return String.format(
+        "Fix OSV vulnerability findings in the student-grade-manager Maven project.%n%n"
+        + "Attempt     : %d of %d%n"
+        + "Root pom.xml: %s/pom.xml%n%n"
+        + "--- Vulnerable packages and required fixes ---%n%s%n%n"
+        + "Steps:%n"
+        + "1. Read %s/pom.xml%n"
+        + "2. For each package above, find its <xxx.version> property and change the value%n"
+        + "   to the FIXED VERSION listed. Edit ONLY those version properties. Do NOT touch%n"
+        + "   any source files under src/.%n"
+        + "3. Run: osv-scanner scan --recursive . to confirm 0 vulnerabilities%n"
+        + "4. Run: mvn verify -pl %s to confirm the build still passes",
+        attempt, maxRetries, projectRoot,
+        findings,
+        projectRoot,
+        MODULE);
+  }
+
+  private String parseOsvFindings(String osvOutput) {
+    return Arrays.stream(osvOutput.split("\n"))
+        .filter(l -> l.contains("GHSA-") || l.contains("CVE-"))
+        .map(l -> {
+          String[] parts = l.split("\\|");
+          if (parts.length >= 7) {
+            String pkg = parts[4].trim();
+            String current = parts[5].trim();
+            String fixed = parts[6].trim();
+            return String.format("  Package %-45s  current: %-10s  fix to: %s",
+                pkg, current, fixed);
+          }
+          return "  " + l.trim();
+        })
+        .collect(Collectors.joining("\n"));
+  }
+
+  private String buildDefaultPrompt(String gate, int attempt, String output) throws Exception {
+    List<String> files = findAffectedFiles(output);
+    String errors = extractErrors(output);
+    return String.format(
         "Fix a Maven build failure in the student-grade-manager Java project.%n%n"
         + "Failed gate : %s%n"
         + "Attempt     : %d of %d%n"
@@ -134,13 +233,7 @@ public class BuildWrapper {
         errors,
         String.join("\n", files),
         MODULE);
-
-    new ProcessBuilder("claude", "-p", prompt, "--allowedTools", "Edit,Read,Bash")
-        .directory(projectRoot.toFile())
-        .inheritIO()
-        .start()
-        .waitFor();
   }
 
-  private record BuildResult(boolean success, String output) { }
+  private record BuildResult(boolean success, String output, String gate) { }
 }
