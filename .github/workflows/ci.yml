@@ -145,6 +145,10 @@ jobs:
     needs: compile
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
       - name: Run OSV Scanner
         run: |
           curl -sSfL "https://github.com/google/osv-scanner/releases/download/v1.9.1/osv-scanner_linux_amd64" \
