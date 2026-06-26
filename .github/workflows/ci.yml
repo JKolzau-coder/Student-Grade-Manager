@@ -145,7 +145,7 @@ jobs:
     needs: compile
     steps:
       - uses: actions/checkout@v4
-      - uses: google/osv-scanner-action@v2.0.2
+      - uses: google/osv-scanner-action@v1.9.2
         with:
           scan-args: |-
             --recursive
