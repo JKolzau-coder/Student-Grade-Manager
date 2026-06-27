@@ -14,10 +14,13 @@ import org.springframework.stereotype.Service;
 public class GradeServiceImpl implements GradeService {
   private final Map<Integer, Student> students = new HashMap<>();
   private final Map<Integer, List<Grade>> grades = new HashMap<>();
+  private final List<Student> studentList = new ArrayList<>();
 
   @Override
   public void addStudent(String name, int studentId) {
-    students.put(studentId, new Student(name, studentId));
+    Student student = new Student(name, studentId);
+    students.put(studentId, student);
+    studentList.add(student);
     grades.put(studentId, new ArrayList<>());
     assert students.containsKey(studentId) && grades.containsKey(studentId)
         : "addStudent left maps inconsistent for id " + studentId;
@@ -61,6 +64,11 @@ public class GradeServiceImpl implements GradeService {
   @Override
   public List<Grade> getGrades(int studentId) {
     List<Grade> list = grades.get(studentId);
-    return list != null ? Collections.unmodifiableList(list) : Collections.emptyList();
+    return list != null ? list : Collections.emptyList();
+  }
+
+  @Override
+  public List<Student> getAllStudents() {
+    return Collections.unmodifiableList(studentList);
   }
 }

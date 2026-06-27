@@ -2,7 +2,11 @@
 # Einmalig pro Session sourcen: source scripts/activate.sh
 # Danach greift der build-fixer automatisch bei jedem mvn-Fehler.
 
-_ACTIVATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -n "$ZSH_VERSION" ]; then
+  _ACTIVATE_DIR="$(cd "$(dirname "${(%):-%x}")" && pwd)"
+else
+  _ACTIVATE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 
 mvn() {
   command mvn "$@"
@@ -11,7 +15,14 @@ mvn() {
     echo ""
     echo "=== mvn fehlgeschlagen — build-wrapper wird gestartet ==="
     java "$_ACTIVATE_DIR/BuildWrapper.java"
-    return $?
+    local wrapper_exit=$?
+    if [ $wrapper_exit -eq 0 ]; then
+      echo ""
+      echo "=== build-wrapper erfolgreich — Wiederhole: mvn $* ==="
+      command mvn "$@"
+      return $?
+    fi
+    return $wrapper_exit
   fi
   return $exit_code
 }

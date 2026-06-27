@@ -4,7 +4,7 @@ import java.util.*;
 import java.util.regex.*;
 import java.util.stream.*;
 
-// Run from project root: java scripts/BuildWrapper.java [maxRetries]
+// Run from project root: java scripts/BuildWrapper.java [maxRetries [finalGoal]]
 public class BuildWrapper {
 
   private static final String MODULE = "student-grade-manager-core";
@@ -12,15 +12,18 @@ public class BuildWrapper {
 
   private final Path projectRoot;
   private final int maxRetries;
+  private final String finalGoal;
 
-  public BuildWrapper(Path projectRoot, int maxRetries) {
+  public BuildWrapper(Path projectRoot, int maxRetries, String finalGoal) {
     this.projectRoot = projectRoot;
     this.maxRetries = maxRetries;
+    this.finalGoal = finalGoal;
   }
 
   public static void main(String[] args) throws Exception {
     int maxRetries = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_MAX_RETRIES;
-    new BuildWrapper(Path.of("").toAbsolutePath(), maxRetries).run();
+    String finalGoal = args.length > 1 ? args[1] : null;
+    new BuildWrapper(Path.of("").toAbsolutePath(), maxRetries, finalGoal).run();
   }
 
   private void run() throws Exception {
@@ -32,7 +35,16 @@ public class BuildWrapper {
       BuildResult result = runGates();
 
       if (result.success()) {
-        System.out.println("\nBuild erfolgreich nach " + attempt + " Versuch(en).");
+        System.out.println("\nAlle Gates grün nach " + attempt + " Versuch(en).");
+        if (finalGoal != null) {
+          System.out.println("Führe mvn " + finalGoal + " aus...");
+          StringBuilder out = new StringBuilder();
+          int exitCode = exec(List.of("mvn", finalGoal, "-pl", MODULE), out);
+          if (exitCode != 0) {
+            System.err.println("mvn " + finalGoal + " fehlgeschlagen.");
+            System.exit(exitCode);
+          }
+        }
         return;
       }
 
@@ -52,6 +64,15 @@ public class BuildWrapper {
     if (exec(List.of("mvn", "verify", "-pl", MODULE), out) != 0) {
       return new BuildResult(false, out.toString(), detectMavenGate(out.toString()));
     }
+
+    exec(List.of("mvn", "org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom",
+        "-pl", MODULE, "-q"), out);
+    String sbom = MODULE + "/target/bom.json";
+    if (Files.exists(projectRoot.resolve(sbom))
+        && exec(List.of("osv-scanner", "scan", "source", "--sbom", sbom), out) != 0) {
+      return new BuildResult(false, out.toString(), "osv");
+    }
+
     if (exec(List.of("mvn", "checkstyle:check", "-pl", MODULE), out) != 0) {
       return new BuildResult(false, out.toString(), "checkstyle");
     }

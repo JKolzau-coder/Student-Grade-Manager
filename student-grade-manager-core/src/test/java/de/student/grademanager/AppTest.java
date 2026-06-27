@@ -16,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.junit.Assert.assertTrue;
 
 public class AppTest {
@@ -78,6 +79,13 @@ public class AppTest {
     verify(mockService).addStudent("Bob", 2001);
     verify(mockService).addGrade(2001, "Java", 2.0);
     verify(mockService).calculateAverage(2001);
+  }
+
+  @Test
+  public void runInteractiveHandlesInvalidInputWithoutPropagating() {
+    Scanner scanner = new Scanner("Bob\nnot-a-number\nJava\n2.0\n");
+    new App(mockService).runInteractive(scanner);
+    verify(mockService, never()).addStudent(anyString(), anyInt());
   }
 
   @Test

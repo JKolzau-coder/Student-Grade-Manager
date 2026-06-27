@@ -94,6 +94,11 @@ public class GradeServiceTest {
   }
 
   @Test
+  public void calculateAverageForUnknownStudentReturnsZero() {
+    assertEquals(0.0, service.calculateAverage(9999), 0.001);
+  }
+
+  @Test
   public void multipleSubjectsAverageCorrectly() {
     service.addStudent("Eve", 2004);
     service.addGrade(2004, "Math", 1.0);

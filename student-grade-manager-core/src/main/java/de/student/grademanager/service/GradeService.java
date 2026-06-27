@@ -12,4 +12,5 @@ public interface GradeService {
   boolean hasStudent(int studentId);
   Student getStudent(int studentId);
   List<Grade> getGrades(int studentId);
+  List<Student> getAllStudents();
 }
