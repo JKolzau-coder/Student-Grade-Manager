@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Grade Manager — Capstone Presentation</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --border:   #30363d;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --accent:   #58a6ff;
+    --green:    #3fb950;
+    --red:      #f85149;
+    --yellow:   #d29922;
+    --purple:   #bc8cff;
+    --code-bg:  #1f2428;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    overflow: hidden;
+  }
+
+  /* ── LAYOUT ───────────────────────────────────────── */
+  #deck {
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  #progress-bar {
+    height: 3px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  #progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width .3s ease;
+  }
+
+  #slide-area {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    padding: 48px 72px;
+    overflow-y: auto;
+  }
+  .slide.active { display: flex; flex-direction: column; gap: 20px; }
+
+  /* title slide */
+  .slide.title-slide {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+  }
+
+  #nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  #nav button {
+    background: var(--border);
+    color: var(--text);
+    border: none;
+    padding: 6px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background .15s;
+  }
+  #nav button:hover { background: #444c56; }
+  #nav button:disabled { opacity: .3; cursor: default; }
+
+  #slide-counter {
+    font-size: 13px;
+    color: var(--muted);
+    min-width: 80px;
+    text-align: center;
+  }
+
+  /* ── TYPOGRAPHY ───────────────────────────────────── */
+  h1 { font-size: 2.2rem; font-weight: 700; color: var(--accent); line-height: 1.2; }
+  h2 { font-size: 1.55rem; font-weight: 600; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-top: 4px; }
+  p  { color: var(--text); line-height: 1.65; }
+
+  .subtitle  { font-size: 1.1rem; color: var(--muted); }
+  .meta      { font-size: .85rem; color: var(--muted); }
+  .accent    { color: var(--accent); }
+  .green     { color: var(--green); }
+  .red       { color: var(--red); }
+  .yellow    { color: var(--yellow); }
+  .muted     { color: var(--muted); }
+
+  .badge {
+    display: inline-block;
+    font-size: .75rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #1f6feb33;
+    color: var(--accent);
+    border: 1px solid #1f6feb66;
+  }
+
+  /* ── CALLOUT ──────────────────────────────────────── */
+  .callout {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    font-size: .92rem;
+    line-height: 1.6;
+  }
+  .callout.warn  { border-color: var(--yellow); }
+  .callout.ok    { border-color: var(--green);  }
+  .callout.danger{ border-color: var(--red);    }
+
+  /* ── CODE ─────────────────────────────────────────── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: .82rem;
+    line-height: 1.55;
+    color: #adbac7;
+  }
+  code { font-family: inherit; font-size: .88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+
+  .kw   { color: #ff7b72; }
+  .str  { color: #a5d6ff; }
+  .ann  { color: #ffa657; }
+  .cm   { color: #8b949e; font-style: italic; }
+  .ok-c { color: var(--green); }
+  .err-c{ color: var(--red); }
+
+  /* ── TABLE ────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+  }
+  th {
+    background: var(--surface);
+    color: var(--accent);
+    font-weight: 600;
+    text-align: left;
+    padding: 9px 14px;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #ffffff08; }
+
+  /* ── GRID ─────────────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .card h3 { font-size: .95rem; color: var(--accent); margin-bottom: 8px; }
+  .card p, .card li { font-size: .85rem; color: var(--muted); line-height: 1.6; }
+  .card ul { padding-left: 16px; }
+
+  /* ── FLOW ─────────────────────────────────────────── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    font-size: .85rem;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    border-left: 2px solid var(--border);
+    padding-left: 16px;
+    position: relative;
+  }
+  .flow-step::before {
+    content: '';
+    position: absolute;
+    left: -5px; top: 14px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .flow-step .label { color: var(--accent); font-weight: 600; min-width: 140px; }
+  .flow-step .desc  { color: var(--muted); }
+
+  /* ── LISTS ────────────────────────────────────────── */
+  ul, ol { padding-left: 20px; }
+  li { margin: 5px 0; line-height: 1.6; font-size: .92rem; }
+  li::marker { color: var(--accent); }
+
+  /* ── RULE ─────────────────────────────────────────── */
+  hr { border: none; border-top: 1px solid var(--border); }
+
+  /* ── TAG ──────────────────────────────────────────── */
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag {
+    font-size: .75rem; padding: 3px 10px;
+    border-radius: 4px; font-weight: 500;
+  }
+  .tag-blue   { background:#1f6feb33; color: var(--accent);  border:1px solid #1f6feb55; }
+  .tag-green  { background:#238636aa; color: var(--green);   border:1px solid #2ea04366; }
+  .tag-red    { background:#da363340; color: var(--red);     border:1px solid #f8514966; }
+  .tag-yellow { background:#9e680038; color: var(--yellow);  border:1px solid #d2992255; }
+  .tag-purple { background:#6e40c940; color: var(--purple);  border:1px solid #bc8cff55; }
+
+  /* ── SCROLLBAR ────────────────────────────────────── */
+  .slide::-webkit-scrollbar { width: 5px; }
+  .slide::-webkit-scrollbar-track { background: transparent; }
+  .slide::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── SECTION DIVIDER ──────────────────────────────── */
+  .section-intro {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .section-number {
+    font-size: 5rem;
+    font-weight: 800;
+    color: var(--border);
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+
+<div id="deck">
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="slide-area">
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 1 — TITLE                                -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide title-slide active">
+      <h1>Student Grade Manager</h1>
+      <p class="subtitle">AI-Augmented Software Development with Java 17 and Maven</p>
+      <hr style="width:120px; margin:8px auto;">
+      <p class="meta">Jonas Kolzau · 27.06.2026</p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 2 — AGENDA                               -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>Agenda</h2>
+      <div class="grid-2">
+        <div>
+          <h3>Part A — Product &amp; Architecture</h3>
+          <ol>
+            <li>Problem: Account Management &amp; Registration</li>
+            <li>Architecture: Data Format and Generation</li>
+            <li>Architecture: Software Components</li>
+            <li>Architecture: Functional Build Process</li>
+            <li>Architecture: BuildAgent Flow</li>
+          </ol>
+          <br>
+          <h3>Part B — Software Framework</h3>
+          <ol start="6">
+            <li>Hooks &amp; Skills</li>
+            <li>CI/CD Pipeline</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Part C — Quality &amp; Security</h3>
+          <ol start="8">
+            <li>Test Execution — Test Categories</li>
+            <li>Security Scanning — Three Layers</li>
+            <li>Test Coverage Distribution</li>
+            <li>CVE Defense — Three Gates</li>
+            <li>Bug via SpotBugs → BuildAgent</li>
+          </ol>
+          <br>
+          <h3>Part D — Reflection</h3>
+          <ol start="13">
+            <li>Learnings</li>
+            <li>Next Steps</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 3 — PROBLEM                              -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>1 · Problem: Account Management &amp; Registration</h2>
+      <table>
+        <thead><tr><th>Without the system</th><th>With the system</th></tr></thead>
+        <tbody>
+          <tr><td>Duplicate student IDs — no uniqueness check</td><td><code>hasStudent()</code> guard rejects duplicates</td></tr>
+          <tr><td>Grades outside valid range corrupt averages</td><td>Grade [1.0–5.0] enforced at construction time</td></tr>
+          <tr><td>No audit trail — who changed what, when</td><td>Structured records + git history as audit log</td></tr>
+          <tr><td>Manual average calculation — arithmetic errors</td><td>Deterministic <code>calculateAverage()</code> with assertion</td></tr>
+          <tr><td>Build failures block developer 15–45 min</td><td>BuildAgent resolves common failures in &lt;5 min</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>Registration flow:</strong> <code>addStudent(name, studentId)</code> → creates identity record.
+        <code>hasStudent()</code> → uniqueness check. <code>addGrade()</code> → profile enrichment.
+        Structurally identical to user registration — academic data instead of credentials.
+      </div>
+      <div class="callout warn">
+        <strong>IAM gap:</strong> Any caller can invoke <code>addStudent</code> with any ID.
+        No authentication. No authorization. This becomes a Spring Security problem at live deployment.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 4 — DATA OBJECTS                         -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>2 · Architecture — Data Format and Generation</h2>
+      <div class="grid-2">
+        <pre><span class="ann">public final class</span> <span class="kw">Student</span> {
+  <span class="kw">private final</span> <span class="str">int</span>    studentId;
+  <span class="kw">private final</span> <span class="str">String</span> name;
+
+  <span class="kw">public</span> Student(String name, <span class="str">int</span> studentId) {
+    <span class="kw">if</span> (name == <span class="kw">null</span>)
+      <span class="kw">throw new</span> IllegalArgumentException(...);
+    <span class="kw">this</span>.name      = name;
+    <span class="kw">this</span>.studentId = studentId;
+  }
+  <span class="cm">// getters only — no setters</span>
+}</pre>
+        <pre><span class="ann">public final class</span> <span class="kw">Grade</span> {
+  <span class="kw">private static final double</span> MIN = 1.0;
+  <span class="kw">private static final double</span> MAX = 5.0;
+
+  <span class="kw">private final</span> <span class="str">String</span> subject;
+  <span class="kw">private final double</span>  value;
+
+  <span class="kw">public</span> Grade(String subject, <span class="str">double</span> value) {
+    <span class="kw">if</span> (subject == <span class="kw">null</span>) <span class="kw">throw</span> ...;
+    <span class="kw">if</span> (value &lt; MIN || value &gt; MAX) <span class="kw">throw</span> ...;
+    <span class="kw">this</span>.subject = subject;
+    <span class="kw">this</span>.value   = value;
+  }
+}</pre>
+      </div>
+      <table>
+        <thead><tr><th>Object</th><th>Consequence</th></tr></thead>
+        <tbody>
+          <tr><td><code>final</code> class</td><td>No subclassing → SpotBugs <code>EI_EXPOSE_REP2</code> eliminated at source</td></tr>
+          <tr><td><code>final</code> fields, no setters</td><td>Immutable after construction — concurrent reads safe without locks</td></tr>
+          <tr><td>Validation in constructor</td><td>No invalid object can ever exist — fail fast, not silently</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 5 — SOFTWARE COMPONENTS                  -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>3 · Architecture — Software Components</h2>
+      <pre>App  <span class="ann">(@SpringBootApplication, CommandLineRunner)</span>
+│  run()            — demo flow, SLF4J logging
+│  runInteractive() — stdin registration
+│  printComparison()— two-student table
+│
+│  Spring IoC injects ▼
+<span class="kw">GradeService</span>  <span class="cm">(interface — DEFINED BEFORE IMPLEMENTATION)</span>
+│  addStudent / addGrade / calculateAverage
+│  hasStudent / getStudent / getGrades
+│
+│  implemented by ▼
+<span class="ann">@Service</span> <span class="kw">GradeServiceImpl</span>
+│  Map&lt;Integer, Student&gt;     students
+│  Map&lt;Integer, List&lt;Grade&gt;&gt; grades
+│  assert: maps stay in sync after every mutation
+│  getGrades() → <span class="ok-c">Collections.unmodifiableList()</span>
+│
+│  uses ▼
+Student (model)     Grade (model)</pre>
+      <div class="callout ok">
+        <strong>The interface boundary is the most important design decision.</strong>
+        JPA persistence, REST controller, Spring Security — each plugs in here
+        without touching <code>App.java</code> or any test file.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 6 — BUILD PIPELINE                       -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>4 · Architecture — Functional Build Process</h2>
+      <table>
+        <thead><tr><th>Gate</th><th>Plugin</th><th>Command</th><th>Pass condition</th></tr></thead>
+        <tbody>
+          <tr><td><span class="green">Compile</span></td><td>maven-compiler-plugin</td><td><code>mvn compile -q</code></td><td>exit 0</td></tr>
+          <tr><td><span class="green">Test</span></td><td>surefire + JaCoCo + Mockito</td><td><code>mvn test</code></td><td>100% green, <code>-ea</code> active</td></tr>
+          <tr><td><span class="yellow">Checkstyle</span></td><td>maven-checkstyle-plugin</td><td><code>mvn checkstyle:check</code></td><td>0 violations</td></tr>
+          <tr><td><span class="yellow">PMD</span></td><td>maven-pmd-plugin 3.21.2</td><td><code>mvn pmd:check</code></td><td>0 violations</td></tr>
+          <tr><td><span class="yellow">SpotBugs</span></td><td>spotbugs-maven-plugin 4.9.8.3</td><td><code>mvn spotbugs:check</code></td><td>0 bugs</td></tr>
+          <tr><td><span class="accent">Package</span></td><td>spring-boot-maven-plugin</td><td><code>mvn package</code></td><td>Layered fat JAR</td></tr>
+          <tr><td><span class="accent">Docker</span></td><td>Multi-stage Dockerfile</td><td>CI only — <code>dev/**</code></td><td>SHA + latest tag pushed</td></tr>
+        </tbody>
+      </table>
+      <div class="callout warn">
+        <strong>Maven Enforcer</strong> blocks <code>-DskipTests</code> globally.
+        No developer under deadline pressure can ship untested code.
+        This is enforced at build-tool level — not at code-review discretion.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 7 — BUILDAGENT                           -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>4 · Architecture — BuildAgent Flow</h2>
+      <div class="grid-2">
+        <div>
+          <div class="flow" style="font-size:.82rem">
+            <div class="flow-step"><span class="label">activate.sh</span><span class="desc">Shell-Funktion über <code>mvn</code> — fängt jeden Aufruf ab</span></div>
+            <div class="flow-step"><span class="label">exit ≠ 0</span><span class="desc">startet <code>BuildWrapper.java</code></span></div>
+            <div class="flow-step"><span class="label">mvn verify</span><span class="desc"><code>detectGate()</code> → <code>compile / surefire / checkstyle / pmd / spotbugs</code><br><span class="yellow">GHSA-* / CVE-* im surefire-Output → Gate <code>"osv"</code></span></span></div>
+            <div class="flow-step"><span class="label">SBOM + OSV Scanner</span><span class="desc">Nach grünem verify: CycloneDX SBOM → <code>osv-scanner</code><br><span class="yellow">Fund → Claude aktualisiert Version in <code>pom.xml</code></span></span></div>
+            <div class="flow-step"><span class="label">callClaude()</span><span class="desc"><code>claude -p "$PROMPT" --allowedTools Edit,Read,Bash</code> → Anthropic API</span></div>
+            <div class="flow-step"><span class="label">retry (max 3)</span><span class="desc">Grün → fertig · nach 3× → Eskalation</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="grid-2" style="gap:8px; margin-bottom:8px">
+            <div class="card" style="border-color:var(--green)">
+              <h3 style="color:var(--green)">Image enthält</h3>
+              <ul>
+                <li>JDK 17 + Maven</li>
+                <li>Spring Boot App</li>
+                <li>Source + <code>scripts/</code></li>
+              </ul>
+            </div>
+            <div class="card" style="border-color:var(--red)">
+              <h3 style="color:var(--red)">Nicht enthalten</h3>
+              <ul>
+                <li>Claude CLI</li>
+                <li><code>ANTHROPIC_API_KEY</code></li>
+                <li>osv-scanner</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card" style="border-color:var(--green); margin-bottom:8px">
+            <h3 style="color:var(--green)">App starten</h3>
+            <p>Kein API-Key, kein Claude CLI nötig.</p>
+          </div>
+          <div class="card" style="border-color:var(--yellow); margin-bottom:8px">
+            <h3 style="color:var(--yellow)">BuildWrapper im Container</h3>
+            <ul>
+              <li><code>ANTHROPIC_API_KEY</code> als Umgebungsvariable</li>
+              <li>Claude CLI fehlt im Image — muss ins Dockerfile</li>
+            </ul>
+          </div>
+          <div class="card" style="border-color:var(--purple)">
+            <h3 style="color:var(--purple)">Trivy — nur in CI</h3>
+            <ul>
+              <li>Scannt das Docker-Image in GitHub Actions</li>
+              <li>Fund → Pipeline-Abbruch, kein automatischer Fix</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="callout ok" style="margin-top:12px">
+        cognitive-core erweitert die CI/CD-Pipeline über GitHub Actions hinaus: <code>post-edit-lint</code> prüft bereits beim Edit, <code>/pre-commit</code> vor dem Commit — sodass Gates in CI nicht mehr als erste Fehlerquelle dienen, sondern nur noch als finale Absicherung.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 8 — COGNITIVE-CORE & SKILLS              -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>5 · Software Framework — Hooks &amp; Skills</h2>
+      <div class="grid-2" style="margin-bottom:14px">
+        <div>
+          <h3>Hooks — deterministisch, nicht übersteuerbar</h3>
+          <table>
+            <thead><tr><th>Hook</th><th>Auslöser</th><th>Effekt</th></tr></thead>
+            <tbody>
+              <tr><td><code>validate-bash</code></td><td>jeder Bash-Befehl</td><td><span class="red">BLOCKED:</span> <code>git push --force</code>, <code>reset --hard</code>, <code>rm -rf .git</code></td></tr>
+              <tr><td><code>post-edit-lint</code></td><td>nach jedem Edit</td><td><code>mvn checkstyle:check pmd:check</code> → Verstoß sofort im Kontext</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Skills — kontextbewusste Review-Schleifen</h3>
+          <table>
+            <thead><tr><th>Skill</th><th>Wann</th><th>Zweck</th></tr></thead>
+            <tbody>
+              <tr><td><code>/pre-commit</code></td><td>vor Commit</td><td>staged Files prüfen — blockiert bei Verstoß</td></tr>
+              <tr><td><code>/session-resume</code></td><td>Session-Start</td><td>Kontext aus letzter Session laden</td></tr>
+              <tr><td><code>/code-review</code></td><td>nach Feature</td><td>Duplikation, Komplexität, CLAUDE.md-Compliance</td></tr>
+              <tr><td><code>/security-baseline</code></td><td>vor Merge</td><td>OWASP, null exposure, mutable collections</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="callout ok">
+        Das cognitive-core Framework kapselt Qualitätsregeln als ausführbaren Code: Hooks greifen deterministisch bei jedem Edit ein, Skills erzwingen eine menschliche Review-Schleife vor jedem Commit — CLAUDE.md wird dadurch zur lebenden Softwaredokumentation, die der Agent aktiv liest, und Vibe Coding wird strukturell verhindert.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 10 — CI/CD PIPELINE                      -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>7 · Software Framework — CI/CD Pipeline</h2>
+
+      <!-- Pipeline visual -->
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:.8rem; flex-wrap:nowrap">
+        <div class="card" style="text-align:center; padding:10px 14px; flex-shrink:0">
+          <div class="green" style="font-size:1rem">✓</div>
+          <strong>Compile</strong>
+        </div>
+        <span class="muted" style="font-size:1.1rem">→</span>
+        <div style="display:flex; flex-direction:column; gap:5px; flex-shrink:0">
+          <div class="card" style="padding:5px 10px"><span class="green">✓</span> Checkstyle</div>
+          <div class="card" style="padding:5px 10px"><span class="green">✓</span> PMD</div>
+          <div class="card" style="padding:5px 10px"><span class="green">✓</span> SpotBugs</div>
+          <div class="card" style="padding:5px 10px"><span class="green">✓</span> Test</div>
+          <div class="card" style="padding:5px 10px; border-color:var(--purple)"><span class="green">✓</span> CVE Scan (Trivy)</div>
+        </div>
+        <span class="muted" style="font-size:1.1rem">→</span>
+        <div class="card" style="text-align:center; padding:10px 14px; flex-shrink:0">
+          <div class="muted" style="font-size:1rem">⊘</div>
+          <strong>Auto-Fix</strong>
+          <div style="font-size:.7rem; color:var(--muted)">skipped</div>
+        </div>
+        <span class="muted" style="font-size:1.1rem">→</span>
+        <div class="card" style="text-align:center; padding:10px 14px; border-color:var(--green); flex-shrink:0">
+          <div class="green" style="font-size:1rem">✓</div>
+          <strong>Docker Build &amp; Push</strong>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <table>
+          <thead><tr><th>Job</th><th>Checks</th><th>Blocks on</th></tr></thead>
+          <tbody>
+            <tr><td><span class="green">Compile</span></td><td>Syntax errors</td><td>Compiler error</td></tr>
+            <tr><td><span class="green">Test</span></td><td>29 tests · JaCoCo</td><td>red test · coverage &lt; 80%</td></tr>
+            <tr><td><span class="green">Checkstyle</span></td><td>Google Style Guide</td><td>Format violation</td></tr>
+            <tr><td><span class="green">PMD</span></td><td>Static analysis</td><td>Empty blocks, unnecessary casts</td></tr>
+            <tr><td><span class="green">SpotBugs</span></td><td>Bug patterns</td><td>Null risks, mutable exposure</td></tr>
+            <tr><td><span class="green">CVE Scan</span></td><td>Docker image (Trivy)</td><td>GHSA / CVE in dependencies</td></tr>
+            <tr><td><span class="muted">Auto-Fix</span></td><td>BuildWrapper + Claude</td><td>Triggers on gate failure only</td></tr>
+            <tr><td><span class="green">Docker</span></td><td>Build &amp; Push ghcr.io</td><td><code>dev/**</code> only</td></tr>
+          </tbody>
+        </table>
+        <div>
+          <div class="card" style="border-color:var(--green); margin-bottom:8px">
+            <h3 style="color:var(--green)">Test Summary — latest run</h3>
+            <table style="margin-top:6px">
+              <tbody>
+                <tr><td>Total tests</td><td><strong class="green">29 passed</strong></td></tr>
+                <tr><td>JaCoCo Coverage</td><td><strong class="green">100%</strong></td></tr>
+                <tr><td>Instructions covered</td><td><strong class="green">9 / 9</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout ok">
+            Auto-Fix was <strong>skipped</strong> — all gates green without Claude intervention. BuildWrapper only triggers when a job fails.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 13/14 — TEST CATEGORIES (COMBINED)       -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>10 · Test Execution — Test Categories</h2>
+
+      <div class="callout" style="font-size:.82rem; padding:8px 14px">
+        <strong>Rule:</strong> External dependency → <span class="accent">Mockito</span> &nbsp;·&nbsp;
+        Own class → <span class="green">test directly</span> &nbsp;·&nbsp;
+        Never mock your own implementations
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px">
+
+        <!-- AppTest — Mockito -->
+        <div class="card" style="border-color:var(--accent)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3 style="color:var(--accent); font-size:1rem">AppTest</h3>
+            <span class="tag tag-blue">Mockito</span>
+          </div>
+          <p style="font-size:.77rem; color:var(--muted); margin-bottom:8px">
+            Tests <code>App</code> — <code>GradeService</code> is an external dependency
+          </p>
+          <table style="font-size:.74rem; width:100%">
+            <thead><tr><th>Technique</th><th>Verifies</th></tr></thead>
+            <tbody>
+              <tr><td><code>when().thenReturn()</code></td><td>App calls service with correct arguments</td></tr>
+              <tr><td><code>doThrow().when()</code></td><td>Exception caught, does not propagate</td></tr>
+              <tr><td><code>verify(never())</code></td><td>Guard branch: no service call when id == -1</td></tr>
+              <tr><td><code>@Test(timeout=1000)</code></td><td>No blocking — mock avoids I/O wait</td></tr>
+              <tr><td><code>new Scanner("…")</code></td><td>stdin parsing, correct delegation to service</td></tr>
+              <tr><td><code>thenReturn(null)</code></td><td>Null branch: warning logged, no crash</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Direct tests -->
+        <div style="display:flex; flex-direction:column; gap:10px">
+
+          <div class="card" style="border-color:var(--green)">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+              <h3 style="font-size:.95rem">GradeServiceTest</h3>
+              <span class="tag tag-green">Direct</span>
+            </div>
+            <p style="font-size:.76rem; color:var(--muted); margin-bottom:6px">
+              Tests <code>GradeServiceImpl</code> — own class, no mock
+            </p>
+            <div class="tag-row">
+              <span class="tag tag-green">Happy path</span>
+              <span class="tag tag-yellow">Edge case (empty)</span>
+              <span class="tag tag-red">Exception</span>
+              <span class="tag tag-purple">Reflection + assert</span>
+            </div>
+            <p style="font-size:.74rem; color:var(--muted); margin-top:6px">
+              Verifies: business logic, map consistency, <code>unmodifiableList</code>
+            </p>
+          </div>
+
+          <div class="card" style="border-color:var(--green)">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+              <h3 style="font-size:.95rem">GradeTest</h3>
+              <span class="tag tag-green">Direct</span>
+            </div>
+            <p style="font-size:.76rem; color:var(--muted)">
+              Verifies: constructor validation · boundary <code>1.0</code> / <code>5.0</code> · null subject → exception
+            </p>
+          </div>
+
+          <div class="card" style="border-color:var(--green)">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px">
+              <h3 style="font-size:.95rem">StudentTest</h3>
+              <span class="tag tag-green">Direct</span>
+            </div>
+            <p style="font-size:.76rem; color:var(--muted)">
+              Verifies: name + ID stored · null name → <code>IllegalArgumentException</code>
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 15 — SECURITY LAYERS                     -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>11 · Security Scanning — Three Layers</h2>
+
+      <div class="grid-3" style="margin-bottom:16px">
+
+        <div class="card" style="border-color:var(--yellow)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>Version Test</h3>
+            <span class="tag tag-yellow">dev time</span>
+          </div>
+          <p style="font-size:.82rem; color:var(--muted); line-height:1.7">
+            Runs as part of <code>mvn test</code>.<br>
+            Asserts that specific dependency versions meet the minimum safe version.<br><br>
+            If the assertion fails, surefire output contains <code>GHSA-</code> or <code>CVE-</code> →
+            BuildWrapper detects gate <code>"osv"</code> → BuildAgent fixes <code>pom.xml</code>.
+          </p>
+        </div>
+
+        <div class="card" style="border-color:var(--accent)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>OSV Scanner</h3>
+            <span class="tag tag-blue">local + CI</span>
+          </div>
+          <p style="font-size:.82rem; color:var(--muted); line-height:1.7">
+            Runs after <code>mvn verify</code> succeeds.<br>
+            Generates a CycloneDX SBOM and checks all dependencies against the
+            <strong>GHSA / OSV</strong> advisory database.<br><br>
+            Exit ≠ 0 → same gate <code>"osv"</code> → BuildAgent upgrades the affected version in <code>pom.xml</code>.
+          </p>
+        </div>
+
+        <div class="card" style="border-color:var(--purple)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>Trivy</h3>
+            <span class="tag tag-purple">CI only</span>
+          </div>
+          <p style="font-size:.82rem; color:var(--muted); line-height:1.7">
+            Runs in GitHub Actions after the Docker image is built.<br>
+            Scans all image layers for CRITICAL / HIGH CVEs — catches transitive
+            vulnerabilities that neither the version test nor OSV Scanner saw.<br><br>
+            No BuildAgent integration — CI blocks, human review required.
+          </p>
+        </div>
+
+      </div>
+
+      <table>
+        <thead><tr><th>Layer</th><th>When</th><th>What it checks</th><th>On failure</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Version Test</strong></td>
+            <td><code>mvn test</code> — before commit</td>
+            <td>Known CVEs in pinned versions (hardcoded assertions)</td>
+            <td><span class="yellow">BuildAgent</span> → upgrades <code>pom.xml</code></td>
+          </tr>
+          <tr>
+            <td><strong>OSV Scanner</strong></td>
+            <td>After <code>mvn verify</code> — local &amp; CI</td>
+            <td>Full SBOM against GHSA / OSV database</td>
+            <td><span class="yellow">BuildAgent</span> → upgrades <code>pom.xml</code></td>
+          </tr>
+          <tr>
+            <td><strong>Trivy</strong></td>
+            <td>CI — after Docker build</td>
+            <td>All image layers, transitive dependencies</td>
+            <td><span class="red">CI blocks</span> — manual fix required</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 16 — TEST COVERAGE                       -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>10 · Test Coverage Distribution</h2>
+
+      <!-- Source of truth note -->
+      <p style="font-size:.8rem; color:var(--muted); margin-bottom:8px">
+        Generated by <strong>JaCoCo 0.8.12</strong> via <code>mvn test -pl student-grade-manager-core</code> on 2026-06-27 &nbsp;·&nbsp;
+        30 tests · 0 failures · BUILD SUCCESS &nbsp;·&nbsp;
+        Report: <code>target/site/jacoco/index.html</code> &nbsp;·&nbsp;
+        Surefire XML: <code>target/surefire-reports/TEST-*.xml</code>
+      </p>
+
+      <table>
+        <thead><tr><th>Class</th><th>Instructions</th><th>Branches</th><th>Methods</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td><code>Grade</code></td><td><span class="green">100% (35/35)</span></td><td><span class="green">100% (6/6)</span></td><td><span class="green">100% (3/3)</span></td><td>All constructor paths + 2 getters</td></tr>
+          <tr><td><code>Student</code></td><td><span class="green">100% (22/22)</span></td><td><span class="green">100% (2/2)</span></td><td><span class="green">100% (3/3)</span></td><td>Null-check + happy path</td></tr>
+          <tr><td><code>App</code></td><td><span class="green">100% (321/321)</span></td><td><span class="yellow">91.7% (11/12)</span></td><td><span class="green">100% (8/8)</span></td><td>All paths incl. comparison table · 1 branch uncovered</td></tr>
+          <tr><td><code>GradeServiceImpl</code></td><td><span class="yellow">90.7% (156/172)</span></td><td><span class="yellow">77.8% (14/18)</span></td><td><span class="yellow">88.9% (8/9)</span></td><td><code>getAllStudents()</code> not yet tested — M5 task</td></tr>
+          <tr style="border-top: 2px solid var(--border); font-weight:600"><td>Overall</td><td><span class="green">97.1% (534/550)</span></td><td><span class="green">86.8% (33/38)</span></td><td><span class="yellow">95.7% (22/23)</span></td><td>Gate threshold: instruction ≥ 80%, branch ≥ 70%</td></tr>
+        </tbody>
+      </table>
+
+      <div style="display:flex; gap:10px; margin-top:8px; font-size:.8rem; flex-wrap:wrap">
+        <div style="display:flex; gap:6px; align-items:center">
+          <span style="color:var(--muted)">JaCoCo report (local):</span>
+          <code>mvn test -pl student-grade-manager-core &amp;&amp; open student-grade-manager-core/target/site/jacoco/index.html</code>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center">
+          <span style="color:var(--muted)">CI artifact:</span>
+          <span style="color:var(--accent)">Actions → test job → jacoco-report</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 17 — CVE DEFENSE                         -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>11 · CVE Defense — Three Gates</h2>
+
+      <div class="grid-3">
+
+        <div class="card" style="border-color:var(--yellow)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>Gate 1 — Outdated software</h3>
+            <span class="tag tag-yellow">mvn test</span>
+          </div>
+          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
+            The version is declared in <code>pom.xml</code> — this is the single source of truth
+            for what ends up on the classpath.
+          </p>
+          <pre style="font-size:.7rem"><span class="cm">&lt;!-- pom.xml --&gt;</span>
+&lt;gson.version&gt;<span class="err-c">2.8.5</span>&lt;/gson.version&gt;
+
+<span class="cm">&lt;!-- too old — GHSA-4jrv-ppp4-jm57 --&gt;</span></pre>
+          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
+            <span class="tag tag-yellow">dev time</span>
+            <span class="tag tag-yellow">BuildWrapper detects</span>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:var(--accent)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>Gate 2 — Dependency relationships</h3>
+            <span class="tag tag-blue">after verify</span>
+          </div>
+          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
+            OSV Scanner + CycloneDX SBOM checks <em>every</em> dependency against GHSA / OSV — no test needs to be written.
+          </p>
+          <pre style="font-size:.7rem"><span class="cm">$ osv-scanner scan source --sbom bom.json</span>
+
+OSV ID             Package
+GHSA-4jrv-ppp4-jm57  com.google.code.gson:gson
+  installed: <span class="err-c">2.8.5</span>   fixed: <span class="ok-c">2.8.9</span>
+
+CVE-2025-22235    org.springframework.boot:spring-boot
+  installed: <span class="err-c">3.3.5</span>   fixed: <span class="ok-c">3.4.5</span></pre>
+          <p style="font-size:.74rem; color:var(--muted); margin-top:6px">→ gate <code>"osv"</code> → BuildWrapper ruft Claude auf → Claude upgrades version in <code>pom.xml</code></p>
+          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
+            <span class="tag tag-blue">local + CI</span>
+            <span class="tag tag-blue">BuildWrapper → Claude fix</span>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:var(--purple)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>Gate 3 — Finished image</h3>
+            <span class="tag tag-purple">CI / Docker</span>
+          </div>
+          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
+            Trivy scans all Docker image layers — catches CVEs bundled inside the fat JAR or base image, invisible to SBOM scanning.
+          </p>
+          <table style="font-size:.72rem; width:100%">
+            <thead><tr><th>CVE</th><th>Library</th><th>Vuln.</th><th>Fixed</th></tr></thead>
+            <tbody>
+              <tr><td><code>CVE-2025-22235</code></td><td>spring-boot</td><td><span class="red">3.3.5</span></td><td><span class="green">3.4.5</span></td></tr>
+              <tr><td><code>CVE-2025-41249</code></td><td>spring-core</td><td><span class="red">6.2.6</span></td><td><span class="green">6.2.11</span></td></tr>
+              <tr><td><code>CVE-2026-40973</code></td><td>spring-boot</td><td><span class="red">3.3.5</span></td><td><span class="accent">.trivyignore</span></td></tr>
+            </tbody>
+          </table>
+          <p style="font-size:.74rem; color:var(--muted); margin-top:6px">No BuildAgent — CI blocks, manual upgrade required.</p>
+          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
+            <span class="tag tag-purple">CI only</span>
+            <span class="tag tag-red">manual fix</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 18 — BUG VIA PLUGIN                      -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>12 · Bug via SpotBugs → Fixed by BuildAgent</h2>
+      <div class="grid-2">
+        <div>
+          <h3>The Bug: <code>EI_EXPOSE_REP</code></h3>
+          <pre><span class="cm">// VULNERABLE — caller can do:
+// service.getGrades(1001).clear()</span>
+<span class="kw">public</span> List&lt;Grade&gt; getGrades(<span class="str">int</span> id) {
+  <span class="kw">return</span> grades.get(id); <span class="cm">// direct ref</span>
+}</pre>
+          <br>
+          <pre><span class="cm">// CORRECT — mutation blocked at call site</span>
+<span class="kw">public</span> List&lt;Grade&gt; getGrades(<span class="str">int</span> id) {
+  List&lt;Grade&gt; l = grades.get(id);
+  <span class="kw">return</span> l != <span class="kw">null</span>
+    ? Collections.unmodifiableList(l)
+    : Collections.emptyList();
+}</pre>
+        </div>
+        <div>
+          <h3>BuildAgent Detection Flow</h3>
+          <div class="flow" style="font-size:.78rem">
+            <div class="flow-step"><span class="label">mvn verify fails</span><span class="desc"><code>[ERROR] High: getGrades() EI_EXPOSE_REP</code></span></div>
+            <div class="flow-step"><span class="label">detectGate()</span><span class="desc"><code>"spotbugs-maven-plugin"</code> in output → gate = <code>spotbugs</code></span></div>
+            <div class="flow-step"><span class="label">extractErrors()</span><span class="desc">Collects <code>[ERROR]</code> lines</span></div>
+            <div class="flow-step"><span class="label">findAffectedFiles()</span><span class="desc">Regex → <code>GradeServiceImpl.java</code></span></div>
+            <div class="flow-step"><span class="label">callClaude()</span><span class="desc">Reads file, identifies <code>getGrades()</code>, applies fix</span></div>
+            <div class="flow-step"><span class="label" style="color:var(--green)">retry passes</span><span class="desc">SpotBugs gate green → exit 0</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="callout danger">
+        <strong>This regression actually happened:</strong> A previous BuildAgent commit reverted
+        <code>unmodifiableList()</code> to a direct return. SpotBugs caught it on the next
+        <code>mvn verify</code>. Every BuildAgent commit requires human code review before merging.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 19 — LEARNINGS                           -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>15 · Learnings</h2>
+      <div class="grid-3">
+
+        <div class="card" style="border-color:var(--yellow)">
+          <h3 style="color:var(--yellow); margin-bottom:12px">Commit &amp; Changelog Quality</h3>
+          <ul>
+            <li>Automated fixes are only as good as the error context passed to Claude</li>
+            <li>Vague gate output → vague fix</li>
+            <li>Structured prompts with explicit error lines → reliable changes</li>
+            <li>Consistent commit format is a prerequisite for traceability</li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-color:var(--red)">
+          <h3 style="color:var(--red); margin-bottom:12px">Spring Security at Docker Level</h3>
+          <ul>
+            <li><code>@PreAuthorize</code> on <code>GradeService</code> — no rewrites needed</li>
+            <li>Service-layer security ≠ image-layer security</li>
+            <li>Base image CVEs, exposed ports, runtime user — separate concern</li>
+            <li>Both layers must be addressed before live deployment</li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-color:var(--purple)">
+          <h3 style="color:var(--purple); margin-bottom:12px">Pattern Tracking is Hard</h3>
+          <ul>
+            <li>BuildWrapper retries 3× but has no memory across sessions</li>
+            <li>Same gate can fail repeatedly in different builds</li>
+            <li>No mechanism to recognise, escalate, or learn from recurring errors</li>
+            <li>Each run starts cold — root causes persist</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 20 — NEXT STEPS                          -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>16 · Next Steps</h2>
+      <div class="grid-2">
+
+        <div class="card" style="border-color:var(--accent)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+            <h3>IAM &amp; API Authorization</h3>
+            <span class="tag tag-blue">Security</span>
+          </div>
+          <ul>
+            <li>REST API via Spring MVC — controller above <code>GradeService</code>, no impl changes</li>
+            <li>JWT / OAuth2 authentication on every request</li>
+            <li><code>@PreAuthorize("hasRole('TEACHER')")</code> on interface methods</li>
+            <li>Non-root Docker user, minimal base image, no debug ports</li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-color:var(--purple)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+            <h3>LangChain — Commit Memory</h3>
+            <span class="tag tag-purple">AI</span>
+          </div>
+          <ul>
+            <li>Index git log + BuildWrapper output into a vector store</li>
+            <li>Before calling Claude: retrieve similar past failures and their fixes</li>
+            <li>Closes the pattern-tracking gap — BuildWrapper gains persistent memory</li>
+            <li>Recurring patterns auto-proposed as new CLAUDE.md rules</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE 22 — CONCLUSION                          -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide title-slide">
+      <h1 style="font-size:1.8rem">What This Project Demonstrates</h1>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; text-align:left; max-width:800px">
+        <div class="callout ok">
+          <strong>Delivery</strong><br>
+          GitHub Actions CI/CD · Layered Docker · SHA-tagged registry
+        </div>
+        <div class="callout ok">
+          <strong>AI Governance</strong><br>
+          CLAUDE.md rules · BuildAgent review gate · Tool whitelist enforced
+        </div>
+        <div class="callout ok">
+          <strong>Extensibility</strong><br>
+          Interface boundary → JPA, REST, Spring Security — zero rewrites
+        </div>
+      </div>
+      <p class="muted" style="margin-top:16px">Student Grade Manager · Java 17 · Spring Boot 3.3.5 · Maven · cognitive-core</p>
+    </div>
+
+  </div><!-- /slide-area -->
+
+  <div id="nav">
+    <button id="btn-prev" onclick="go(-1)" disabled>← Prev</button>
+    <span id="slide-counter">1 / 28</span>
+    <button id="btn-next" onclick="go(1)">Next →</button>
+  </div>
+</div><!-- /deck -->
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total  = slides.length;
+  let   cur    = 0;
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    cur = Math.max(0, Math.min(total - 1, n));
+    slides[cur].classList.add('active');
+    document.getElementById('slide-counter').textContent = (cur + 1) + ' / ' + total;
+    document.getElementById('btn-prev').disabled = cur === 0;
+    document.getElementById('btn-next').disabled = cur === total - 1;
+    document.getElementById('progress-fill').style.width =
+      ((cur + 1) / total * 100) + '%';
+    slides[cur].scrollTop = 0;
+  }
+
+  function go(dir) { show(cur + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ')  go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     go(-1);
+    if (e.key === 'Home')                                                   show(0);
+    if (e.key === 'End')                                                    show(total - 1);
+  });
+
+  // init
+  show(0);
+</script>
+</body>
+</html>
