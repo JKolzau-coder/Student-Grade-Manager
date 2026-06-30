@@ -469,10 +469,12 @@ public List<Grade> getGrades(int studentId) {
 }
 ```
 
-**The mandatory review rule:** Every BuildAgent commit is reviewed before merging.
-This is in `CLAUDE.md`. It is not optional. The pattern `EI_EXPOSE_REP` → mutable list
-appeared as a regression exactly because a previous agent commit was not reviewed
-with sufficient attention.
+**The mandatory review rule:** Every BuildAgent fix is reviewed before merging.
+The CI workflow enforces this structurally: BuildAgent pushes to a `fix/<gate>` branch
+and opens a pull request with a checklist (diff is minimal, fix addresses root cause,
+no new logic without a test). The review is no longer optional — the PR gate makes it
+impossible to skip. The pattern `EI_EXPOSE_REP` → mutable list appeared as a regression
+exactly because a previous agent commit was merged without sufficient review.
 
 ---
 
@@ -529,7 +531,7 @@ of interface-first design.
 | `@{argLine}` Late-Binding | JaCoCo sets a Maven property after compile. If Surefire's `argLine` is hardcoded, JaCoCo's value is overwritten. `@{argLine}` resolves at execution time. Without it, coverage shows 0%. |
 | `-ea` must be in Surefire `argLine` | JVM does not enable assertions by default. The `@BeforeClass` check `desiredAssertionStatus()` verifies it is active before any test that relies on assertions runs. |
 | BuildAgent artifacts require review | Automated fixes reliably handle mechanical violations but can introduce regressions: mutable list regression, unnecessary comments, wrong package placement. |
-| `[skip ci]` prevents CI infinite loops | BuildAgent commits trigger GitHub Actions. Without `[skip ci]` in the commit message, the pipeline re-triggers indefinitely. |
+| `fix/` branch prefix breaks CI infinite loops | BuildAgent now pushes to a `fix/<gate>-<timestamp>` branch and opens a PR. The `build-fixer` job skips branches already prefixed with `fix/`, so no infinite loop can occur — the loop prevention is structural, not dependent on a commit message flag. |
 
 ### CI/CD and Docker
 
@@ -628,7 +630,7 @@ Evidence that the project fulfills each architecture pattern:
 |---|---|---|
 | **Audit trail** | Git log tells a clear story — `type(scope): subject` convention throughout | `git log --oneline` |
 | **Capability contracts** | `pom.xml` declares all dependencies explicitly; Spring Boot BOM as version authority | `mvn dependency:tree` |
-| **Regression gates** | Checkstyle, PMD, SpotBugs, JaCoCo block bad code in every build | `mvn verify` |
+| **Regression gates** | Checkstyle, PMD, SpotBugs, JaCoCo, Javadoc block bad code in every build | `mvn verify` |
 | **Eval dataset** | Tests cover edge cases: boundaries (1.0, 5.0), null inputs, map-out-of-sync via reflection | `jacoco:report` |
 | **Traces with spans** | CI pipeline shows each stage as a discrete job with named output | GitHub Actions workflow |
 | **Trust boundary** | No secrets in repo; BuildAgent given minimum required tools (`Edit,Read,Bash` only) | `.gitignore`, `callClaude()` in `BuildAgent.java` |
@@ -644,7 +646,7 @@ Evidence that the project fulfills each architecture pattern:
 |---|---|---|---|
 | Git workflow | 20% | Clean history, feature branches, conventional commits | `git log --oneline` |
 | Maven build | 15% | `mvn verify` green; all dependencies resolve | `mvn clean package` demo |
-| Code quality | 15% | 0 Checkstyle violations, 0 PMD violations, 0 SpotBugs | `mvn verify` output |
+| Code quality | 15% | 0 Checkstyle violations, 0 PMD violations, 0 SpotBugs; complete Javadoc on all public API; custom PMD ruleset (`pmd-rules.xml`) | `mvn verify` output |
 | Test quality | 20% | 30 tests, >80% coverage, edge cases, meaningful assertions | JaCoCo report |
 | CI pipeline | 15% | GitHub Actions: compile → test → checkstyle → PMD → SpotBugs → Docker | GitHub Actions run |
 | Security | 10% | `.gitignore` excludes secrets; BuildAgent scoped to `Edit,Read,Bash`; `unmodifiableList` enforced | `spotbugs-exclude.xml` with rationale |
