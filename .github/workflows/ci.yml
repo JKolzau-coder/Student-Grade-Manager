@@ -201,9 +201,10 @@ jobs:
     name: Auto-Fix
     runs-on: ubuntu-latest
     needs: [compile, test, checkstyle, pmd, spotbugs]
-    if: failure()
+    if: failure() && !startsWith(github.ref_name, 'fix/')
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -225,12 +226,37 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: java scripts/BuildWrapper.java
-      - name: Commit and push fixes
+      - name: Open PR with fix
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "build-fixer[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if ! git diff --quiet; then
-            git add student-grade-manager-core/src/
-            git commit -m "fix(auto): resolve build gate violations [skip ci]"
-            git push
+          if git diff --quiet; then
+            echo "No changes — BuildWrapper produced no fix."
+            exit 0
           fi
+          GATE="unknown"
+          if [ "${{ needs.compile.result }}"    = "failure" ]; then GATE="compile";    fi
+          if [ "${{ needs.test.result }}"       = "failure" ]; then GATE="test";       fi
+          if [ "${{ needs.checkstyle.result }}" = "failure" ]; then GATE="checkstyle"; fi
+          if [ "${{ needs.pmd.result }}"        = "failure" ]; then GATE="pmd";        fi
+          if [ "${{ needs.spotbugs.result }}"   = "failure" ]; then GATE="spotbugs";   fi
+          BASE="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
+          BRANCH="fix/${GATE}-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
+          git add student-grade-manager-core/src/ pom.xml student-grade-manager-core/pom.xml
+          git commit -m "fix(auto): resolve ${GATE} gate violations"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --title "auto: fix ${GATE} gate" \
+            --body "$(cat <<'EOF'
+          BuildAgent applied this fix. All gates passed on retry.
+
+          **Review checklist before merging:**
+          - [ ] Diff is minimal — no unrelated changes
+          - [ ] Fix addresses root cause, not just the symptom
+          - [ ] No new logic introduced without a test
+          EOF
+          )" \
+            --base "$BASE"

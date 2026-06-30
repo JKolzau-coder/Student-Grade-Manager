@@ -290,6 +290,7 @@
           <h3>Part A — Product &amp; Architecture</h3>
           <ol>
             <li>Problem: Account Management &amp; Registration</li>
+            <li>Bug via SpotBugs → BuildAgent</li>
             <li>Architecture: Data Format and Generation</li>
             <li>Architecture: Software Components</li>
             <li>Architecture: Functional Build Process</li>
@@ -297,25 +298,24 @@
           </ol>
           <br>
           <h3>Part B — Software Framework</h3>
-          <ol start="6">
-            <li>Hooks &amp; Skills</li>
+          <ol start="7">
             <li>CI/CD Pipeline</li>
+            <li>Hooks &amp; Skills</li>
           </ol>
         </div>
         <div>
           <h3>Part C — Quality &amp; Security</h3>
-          <ol start="8">
+          <ol start="9">
             <li>Test Execution — Test Categories</li>
+            <li>CVE Defense — Three Gates</li>
             <li>Security Scanning — Three Layers</li>
             <li>Test Coverage Distribution</li>
-            <li>CVE Defense — Three Gates</li>
-            <li>Bug via SpotBugs → BuildAgent</li>
           </ol>
           <br>
           <h3>Part D — Reflection</h3>
           <ol start="13">
-            <li>Learnings</li>
             <li>Next Steps</li>
+            <li>Learnings</li>
           </ol>
         </div>
       </div>
@@ -348,10 +348,51 @@
     </div>
 
     <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE — BUG VIA SPOTBUGS                       -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>2 · Bug via SpotBugs → Fixed by BuildAgent</h2>
+      <div class="grid-2">
+        <div>
+          <h3>The Bug: <code>EI_EXPOSE_REP</code></h3>
+          <pre><span class="cm">// VULNERABLE — caller can do:
+// service.getGrades(1001).clear()</span>
+<span class="kw">public</span> List&lt;Grade&gt; getGrades(<span class="str">int</span> id) {
+  <span class="kw">return</span> grades.get(id); <span class="cm">// direct ref</span>
+}</pre>
+          <br>
+          <pre><span class="cm">// CORRECT — mutation blocked at call site</span>
+<span class="kw">public</span> List&lt;Grade&gt; getGrades(<span class="str">int</span> id) {
+  List&lt;Grade&gt; l = grades.get(id);
+  <span class="kw">return</span> l != <span class="kw">null</span>
+    ? Collections.unmodifiableList(l)
+    : Collections.emptyList();
+}</pre>
+        </div>
+        <div>
+          <h3>BuildAgent Detection Flow</h3>
+          <div class="flow" style="font-size:.78rem">
+            <div class="flow-step"><span class="label">mvn verify fails</span><span class="desc"><code>[ERROR] High: getGrades() EI_EXPOSE_REP</code></span></div>
+            <div class="flow-step"><span class="label">detectGate()</span><span class="desc"><code>"spotbugs-maven-plugin"</code> in output → gate = <code>spotbugs</code></span></div>
+            <div class="flow-step"><span class="label">extractErrors()</span><span class="desc">Collects <code>[ERROR]</code> lines</span></div>
+            <div class="flow-step"><span class="label">findAffectedFiles()</span><span class="desc">Regex → <code>GradeServiceImpl.java</code></span></div>
+            <div class="flow-step"><span class="label">callClaude()</span><span class="desc">Reads file, identifies <code>getGrades()</code>, applies fix</span></div>
+            <div class="flow-step"><span class="label" style="color:var(--green)">retry passes</span><span class="desc">SpotBugs gate green → exit 0</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="callout danger">
+        <strong>This regression actually happened:</strong> A previous BuildAgent commit reverted
+        <code>unmodifiableList()</code> to a direct return. SpotBugs caught it on the next
+        <code>mvn verify</code>. Every BuildAgent commit requires human code review before merging.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
     <!-- SLIDE 4 — DATA OBJECTS                         -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
-      <h2>2 · Architecture — Data Format and Generation</h2>
+      <h2>3 · Architecture — Data Format and Generation</h2>
       <div class="grid-2">
         <pre><span class="ann">public final class</span> <span class="kw">Student</span> {
   <span class="kw">private final</span> <span class="str">int</span>    studentId;
@@ -394,7 +435,7 @@
     <!-- SLIDE 5 — SOFTWARE COMPONENTS                  -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
-      <h2>3 · Architecture — Software Components</h2>
+      <h2>4 · Architecture — Software Components</h2>
       <pre>App  <span class="ann">(@SpringBootApplication, CommandLineRunner)</span>
 │  run()            — demo flow, SLF4J logging
 │  runInteractive() — stdin registration
@@ -425,7 +466,7 @@ Student (model)     Grade (model)</pre>
     <!-- SLIDE 6 — BUILD PIPELINE                       -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
-      <h2>4 · Architecture — Functional Build Process</h2>
+      <h2>5 · Architecture — Functional Build Process</h2>
       <table>
         <thead><tr><th>Gate</th><th>Plugin</th><th>Command</th><th>Pass condition</th></tr></thead>
         <tbody>
@@ -449,22 +490,22 @@ Student (model)     Grade (model)</pre>
     <!-- SLIDE 7 — BUILDAGENT                           -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
-      <h2>4 · Architecture — BuildAgent Flow</h2>
+      <h2>6 · Architecture — BuildAgent Flow</h2>
       <div class="grid-2">
         <div>
           <div class="flow" style="font-size:.82rem">
-            <div class="flow-step"><span class="label">activate.sh</span><span class="desc">Shell-Funktion über <code>mvn</code> — fängt jeden Aufruf ab</span></div>
-            <div class="flow-step"><span class="label">exit ≠ 0</span><span class="desc">startet <code>BuildWrapper.java</code></span></div>
-            <div class="flow-step"><span class="label">mvn verify</span><span class="desc"><code>detectGate()</code> → <code>compile / surefire / checkstyle / pmd / spotbugs</code><br><span class="yellow">GHSA-* / CVE-* im surefire-Output → Gate <code>"osv"</code></span></span></div>
-            <div class="flow-step"><span class="label">SBOM + OSV Scanner</span><span class="desc">Nach grünem verify: CycloneDX SBOM → <code>osv-scanner</code><br><span class="yellow">Fund → Claude aktualisiert Version in <code>pom.xml</code></span></span></div>
+            <div class="flow-step"><span class="label">activate.sh</span><span class="desc">Shell function wrapping <code>mvn</code> — intercepts every call</span></div>
+            <div class="flow-step"><span class="label">exit ≠ 0</span><span class="desc">launches <code>BuildWrapper.java</code></span></div>
+            <div class="flow-step"><span class="label">mvn verify</span><span class="desc"><code>detectGate()</code> → <code>compile / surefire / checkstyle / pmd / spotbugs</code><br><span class="yellow">GHSA-* / CVE-* in surefire output → gate <code>"osv"</code></span></span></div>
+            <div class="flow-step"><span class="label">SBOM + OSV Scanner</span><span class="desc">After green verify: CycloneDX SBOM → <code>osv-scanner</code><br><span class="yellow">Finding → Claude upgrades version in <code>pom.xml</code></span></span></div>
             <div class="flow-step"><span class="label">callClaude()</span><span class="desc"><code>claude -p "$PROMPT" --allowedTools Edit,Read,Bash</code> → Anthropic API</span></div>
-            <div class="flow-step"><span class="label">retry (max 3)</span><span class="desc">Grün → fertig · nach 3× → Eskalation</span></div>
+            <div class="flow-step"><span class="label">retry (max 3)</span><span class="desc">Green → done · after 3× → escalate</span></div>
           </div>
         </div>
         <div>
           <div class="grid-2" style="gap:8px; margin-bottom:8px">
             <div class="card" style="border-color:var(--green)">
-              <h3 style="color:var(--green)">Image enthält</h3>
+              <h3 style="color:var(--green)">Image includes</h3>
               <ul>
                 <li>JDK 17 + Maven</li>
                 <li>Spring Boot App</li>
@@ -472,7 +513,7 @@ Student (model)     Grade (model)</pre>
               </ul>
             </div>
             <div class="card" style="border-color:var(--red)">
-              <h3 style="color:var(--red)">Nicht enthalten</h3>
+              <h3 style="color:var(--red)">Not included</h3>
               <ul>
                 <li>Claude CLI</li>
                 <li><code>ANTHROPIC_API_KEY</code></li>
@@ -481,66 +522,32 @@ Student (model)     Grade (model)</pre>
             </div>
           </div>
           <div class="card" style="border-color:var(--green); margin-bottom:8px">
-            <h3 style="color:var(--green)">App starten</h3>
-            <p>Kein API-Key, kein Claude CLI nötig.</p>
+            <h3 style="color:var(--green)">Running the app</h3>
+            <p>No API key, no Claude CLI required.</p>
           </div>
           <div class="card" style="border-color:var(--yellow); margin-bottom:8px">
-            <h3 style="color:var(--yellow)">BuildWrapper im Container</h3>
+            <h3 style="color:var(--yellow)">BuildWrapper in container</h3>
             <ul>
-              <li><code>ANTHROPIC_API_KEY</code> als Umgebungsvariable</li>
-              <li>Claude CLI fehlt im Image — muss ins Dockerfile</li>
+              <li><code>ANTHROPIC_API_KEY</code> as environment variable</li>
+              <li>Claude CLI missing from image — needs to be added to Dockerfile</li>
             </ul>
           </div>
           <div class="card" style="border-color:var(--purple)">
-            <h3 style="color:var(--purple)">Trivy — nur in CI</h3>
+            <h3 style="color:var(--purple)">Trivy — CI only</h3>
             <ul>
-              <li>Scannt das Docker-Image in GitHub Actions</li>
-              <li>Fund → Pipeline-Abbruch, kein automatischer Fix</li>
+              <li>Scans the Docker image in GitHub Actions</li>
+              <li>Finding → pipeline blocked, no automatic fix</li>
             </ul>
           </div>
         </div>
       </div>
       <div class="callout ok" style="margin-top:12px">
-        cognitive-core erweitert die CI/CD-Pipeline über GitHub Actions hinaus: <code>post-edit-lint</code> prüft bereits beim Edit, <code>/pre-commit</code> vor dem Commit — sodass Gates in CI nicht mehr als erste Fehlerquelle dienen, sondern nur noch als finale Absicherung.
+        cognitive-core extends the CI/CD pipeline beyond GitHub Actions: <code>post-edit-lint</code> checks on every edit, <code>/pre-commit</code> before every commit — so CI gates are no longer the first line of defence, but the final safety net.
       </div>
     </div>
 
     <!-- ══════════════════════════════════════════════ -->
-    <!-- SLIDE 8 — COGNITIVE-CORE & SKILLS              -->
-    <!-- ══════════════════════════════════════════════ -->
-    <div class="slide">
-      <h2>5 · Software Framework — Hooks &amp; Skills</h2>
-      <div class="grid-2" style="margin-bottom:14px">
-        <div>
-          <h3>Hooks — deterministisch, nicht übersteuerbar</h3>
-          <table>
-            <thead><tr><th>Hook</th><th>Auslöser</th><th>Effekt</th></tr></thead>
-            <tbody>
-              <tr><td><code>validate-bash</code></td><td>jeder Bash-Befehl</td><td><span class="red">BLOCKED:</span> <code>git push --force</code>, <code>reset --hard</code>, <code>rm -rf .git</code></td></tr>
-              <tr><td><code>post-edit-lint</code></td><td>nach jedem Edit</td><td><code>mvn checkstyle:check pmd:check</code> → Verstoß sofort im Kontext</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div>
-          <h3>Skills — kontextbewusste Review-Schleifen</h3>
-          <table>
-            <thead><tr><th>Skill</th><th>Wann</th><th>Zweck</th></tr></thead>
-            <tbody>
-              <tr><td><code>/pre-commit</code></td><td>vor Commit</td><td>staged Files prüfen — blockiert bei Verstoß</td></tr>
-              <tr><td><code>/session-resume</code></td><td>Session-Start</td><td>Kontext aus letzter Session laden</td></tr>
-              <tr><td><code>/code-review</code></td><td>nach Feature</td><td>Duplikation, Komplexität, CLAUDE.md-Compliance</td></tr>
-              <tr><td><code>/security-baseline</code></td><td>vor Merge</td><td>OWASP, null exposure, mutable collections</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="callout ok">
-        Das cognitive-core Framework kapselt Qualitätsregeln als ausführbaren Code: Hooks greifen deterministisch bei jedem Edit ein, Skills erzwingen eine menschliche Review-Schleife vor jedem Commit — CLAUDE.md wird dadurch zur lebenden Softwaredokumentation, die der Agent aktiv liest, und Vibe Coding wird strukturell verhindert.
-      </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════ -->
-    <!-- SLIDE 10 — CI/CD PIPELINE                      -->
+    <!-- SLIDE — CI/CD PIPELINE                         -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
       <h2>7 · Software Framework — CI/CD Pipeline</h2>
@@ -605,10 +612,44 @@ Student (model)     Grade (model)</pre>
     </div>
 
     <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE — HOOKS & SKILLS                         -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>8 · Software Framework — Hooks &amp; Skills</h2>
+      <div class="grid-2" style="margin-bottom:14px">
+        <div>
+          <h3>Hooks — deterministic, cannot be overridden</h3>
+          <table>
+            <thead><tr><th>Hook</th><th>Trigger</th><th>Effect</th></tr></thead>
+            <tbody>
+              <tr><td><code>validate-bash</code></td><td>every Bash command</td><td><span class="red">BLOCKED:</span> <code>git push --force</code>, <code>reset --hard</code>, <code>rm -rf .git</code></td></tr>
+              <tr><td><code>post-edit-lint</code></td><td>after every edit</td><td><code>mvn checkstyle:check pmd:check</code> → violation reported immediately in context</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Skills — context-aware review loops</h3>
+          <table>
+            <thead><tr><th>Skill</th><th>When</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td><code>/pre-commit</code></td><td>before commit</td><td>check staged files — blocks on violation</td></tr>
+              <tr><td><code>/session-resume</code></td><td>session start</td><td>load context from last session</td></tr>
+              <tr><td><code>/code-review</code></td><td>after feature</td><td>duplication, complexity, CLAUDE.md compliance</td></tr>
+              <tr><td><code>/security-baseline</code></td><td>before merge</td><td>OWASP, null exposure, mutable collections</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="callout ok">
+        cognitive-core encapsulates quality rules as executable code: hooks fire deterministically on every edit, skills enforce a human review loop before every commit — CLAUDE.md becomes living documentation the agent actively reads, and vibe coding is structurally prevented.
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
     <!-- SLIDE 13/14 — TEST CATEGORIES (COMBINED)       -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
-      <h2>10 · Test Execution — Test Categories</h2>
+      <h2>9 · Test Execution — Test Categories</h2>
 
       <div class="callout" style="font-size:.82rem; padding:8px 14px">
         <strong>Rule:</strong> External dependency → <span class="accent">Mockito</span> &nbsp;·&nbsp;
@@ -687,7 +728,83 @@ Student (model)     Grade (model)</pre>
     </div>
 
     <!-- ══════════════════════════════════════════════ -->
-    <!-- SLIDE 15 — SECURITY LAYERS                     -->
+    <!-- SLIDE — CVE DEFENSE                            -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div class="slide">
+      <h2>10 · CVE Defense — Three Gates</h2>
+
+      <div class="grid-3">
+
+        <div class="card" style="border-color:var(--yellow)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>Gate 1 — Outdated software</h3>
+            <span class="tag tag-yellow">mvn test</span>
+          </div>
+          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
+            The version is declared in <code>pom.xml</code> — this is the single source of truth
+            for what ends up on the classpath.
+          </p>
+          <pre style="font-size:.7rem"><span class="cm">&lt;!-- pom.xml --&gt;</span>
+&lt;gson.version&gt;<span class="err-c">2.8.5</span>&lt;/gson.version&gt;
+
+<span class="cm">&lt;!-- too old — GHSA-4jrv-ppp4-jm57 --&gt;</span></pre>
+          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
+            <span class="tag tag-yellow">dev time</span>
+            <span class="tag tag-yellow">BuildWrapper detects</span>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:var(--accent)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>Gate 2 — Dependency relationships</h3>
+            <span class="tag tag-blue">after verify</span>
+          </div>
+          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
+            OSV Scanner + CycloneDX SBOM checks <em>every</em> dependency against GHSA / OSV — no test needs to be written.
+          </p>
+          <pre style="font-size:.7rem"><span class="cm">$ osv-scanner scan source --sbom bom.json</span>
+
+OSV ID             Package
+GHSA-4jrv-ppp4-jm57  com.google.code.gson:gson
+  installed: <span class="err-c">2.8.5</span>   fixed: <span class="ok-c">2.8.9</span>
+
+CVE-2025-22235    org.springframework.boot:spring-boot
+  installed: <span class="err-c">3.3.5</span>   fixed: <span class="ok-c">3.4.5</span></pre>
+          <p style="font-size:.74rem; color:var(--muted); margin-top:6px">→ gate <code>"osv"</code> → BuildWrapper calls Claude → Claude upgrades version in <code>pom.xml</code></p>
+          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
+            <span class="tag tag-blue">local + CI</span>
+            <span class="tag tag-blue">BuildWrapper → Claude fix</span>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:var(--purple)">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>Gate 3 — Finished image</h3>
+            <span class="tag tag-purple">CI / Docker</span>
+          </div>
+          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
+            Trivy scans all Docker image layers — catches CVEs bundled inside the fat JAR or base image, invisible to SBOM scanning.
+          </p>
+          <table style="font-size:.72rem; width:100%">
+            <thead><tr><th>CVE</th><th>Library</th><th>Vuln.</th><th>Fixed</th></tr></thead>
+            <tbody>
+              <tr><td><code>CVE-2025-22235</code></td><td>spring-boot</td><td><span class="red">3.3.5</span></td><td><span class="green">3.4.5</span></td></tr>
+              <tr><td><code>CVE-2025-41249</code></td><td>spring-core</td><td><span class="red">6.2.6</span></td><td><span class="green">6.2.11</span></td></tr>
+              <tr><td><code>CVE-2026-40973</code></td><td>spring-boot</td><td><span class="red">3.3.5</span></td><td><span class="accent">.trivyignore</span></td></tr>
+            </tbody>
+          </table>
+          <p style="font-size:.74rem; color:var(--muted); margin-top:6px">No BuildAgent — CI blocks, manual upgrade required.</p>
+          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
+            <span class="tag tag-purple">CI only</span>
+            <span class="tag tag-red">manual fix</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- SLIDE — SECURITY LAYERS                        -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
       <h2>11 · Security Scanning — Three Layers</h2>
@@ -762,10 +879,10 @@ Student (model)     Grade (model)</pre>
     </div>
 
     <!-- ══════════════════════════════════════════════ -->
-    <!-- SLIDE 16 — TEST COVERAGE                       -->
+    <!-- SLIDE — TEST COVERAGE                          -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
-      <h2>10 · Test Coverage Distribution</h2>
+      <h2>12 · Test Coverage Distribution</h2>
 
       <!-- Source of truth note -->
       <p style="font-size:.8rem; color:var(--muted); margin-bottom:8px">
@@ -799,127 +916,46 @@ Student (model)     Grade (model)</pre>
     </div>
 
     <!-- ══════════════════════════════════════════════ -->
-    <!-- SLIDE 17 — CVE DEFENSE                         -->
+    <!-- SLIDE — NEXT STEPS                             -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
-      <h2>11 · CVE Defense — Three Gates</h2>
-
-      <div class="grid-3">
-
-        <div class="card" style="border-color:var(--yellow)">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-            <h3>Gate 1 — Outdated software</h3>
-            <span class="tag tag-yellow">mvn test</span>
-          </div>
-          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
-            The version is declared in <code>pom.xml</code> — this is the single source of truth
-            for what ends up on the classpath.
-          </p>
-          <pre style="font-size:.7rem"><span class="cm">&lt;!-- pom.xml --&gt;</span>
-&lt;gson.version&gt;<span class="err-c">2.8.5</span>&lt;/gson.version&gt;
-
-<span class="cm">&lt;!-- too old — GHSA-4jrv-ppp4-jm57 --&gt;</span></pre>
-          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
-            <span class="tag tag-yellow">dev time</span>
-            <span class="tag tag-yellow">BuildWrapper detects</span>
-          </div>
-        </div>
+      <h2>13 · Next Steps</h2>
+      <div class="grid-2">
 
         <div class="card" style="border-color:var(--accent)">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-            <h3>Gate 2 — Dependency relationships</h3>
-            <span class="tag tag-blue">after verify</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+            <h3>IAM &amp; API Authorization</h3>
+            <span class="tag tag-blue">Security</span>
           </div>
-          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
-            OSV Scanner + CycloneDX SBOM checks <em>every</em> dependency against GHSA / OSV — no test needs to be written.
-          </p>
-          <pre style="font-size:.7rem"><span class="cm">$ osv-scanner scan source --sbom bom.json</span>
-
-OSV ID             Package
-GHSA-4jrv-ppp4-jm57  com.google.code.gson:gson
-  installed: <span class="err-c">2.8.5</span>   fixed: <span class="ok-c">2.8.9</span>
-
-CVE-2025-22235    org.springframework.boot:spring-boot
-  installed: <span class="err-c">3.3.5</span>   fixed: <span class="ok-c">3.4.5</span></pre>
-          <p style="font-size:.74rem; color:var(--muted); margin-top:6px">→ gate <code>"osv"</code> → BuildWrapper ruft Claude auf → Claude upgrades version in <code>pom.xml</code></p>
-          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
-            <span class="tag tag-blue">local + CI</span>
-            <span class="tag tag-blue">BuildWrapper → Claude fix</span>
-          </div>
+          <ul>
+            <li>REST API via Spring MVC — controller above <code>GradeService</code>, no impl changes</li>
+            <li>JWT / OAuth2 authentication on every request</li>
+            <li><code>@PreAuthorize("hasRole('TEACHER')")</code> on interface methods</li>
+            <li>Non-root Docker user, minimal base image, no debug ports</li>
+          </ul>
         </div>
 
         <div class="card" style="border-color:var(--purple)">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-            <h3>Gate 3 — Finished image</h3>
-            <span class="tag tag-purple">CI / Docker</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+            <h3>LangChain — Commit Memory</h3>
+            <span class="tag tag-purple">AI</span>
           </div>
-          <p style="font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:8px">
-            Trivy scans all Docker image layers — catches CVEs bundled inside the fat JAR or base image, invisible to SBOM scanning.
-          </p>
-          <table style="font-size:.72rem; width:100%">
-            <thead><tr><th>CVE</th><th>Library</th><th>Vuln.</th><th>Fixed</th></tr></thead>
-            <tbody>
-              <tr><td><code>CVE-2025-22235</code></td><td>spring-boot</td><td><span class="red">3.3.5</span></td><td><span class="green">3.4.5</span></td></tr>
-              <tr><td><code>CVE-2025-41249</code></td><td>spring-core</td><td><span class="red">6.2.6</span></td><td><span class="green">6.2.11</span></td></tr>
-              <tr><td><code>CVE-2026-40973</code></td><td>spring-boot</td><td><span class="red">3.3.5</span></td><td><span class="accent">.trivyignore</span></td></tr>
-            </tbody>
-          </table>
-          <p style="font-size:.74rem; color:var(--muted); margin-top:6px">No BuildAgent — CI blocks, manual upgrade required.</p>
-          <div style="margin-top:8px; display:flex; gap:4px; flex-wrap:wrap">
-            <span class="tag tag-purple">CI only</span>
-            <span class="tag tag-red">manual fix</span>
-          </div>
+          <ul>
+            <li>Index git log + BuildWrapper output into a vector store</li>
+            <li>Before calling Claude: retrieve similar past failures and their fixes</li>
+            <li>Closes the pattern-tracking gap — BuildWrapper gains persistent memory</li>
+            <li>Recurring patterns auto-proposed as new CLAUDE.md rules</li>
+          </ul>
         </div>
 
       </div>
     </div>
 
     <!-- ══════════════════════════════════════════════ -->
-    <!-- SLIDE 18 — BUG VIA PLUGIN                      -->
+    <!-- SLIDE — LEARNINGS                              -->
     <!-- ══════════════════════════════════════════════ -->
     <div class="slide">
-      <h2>12 · Bug via SpotBugs → Fixed by BuildAgent</h2>
-      <div class="grid-2">
-        <div>
-          <h3>The Bug: <code>EI_EXPOSE_REP</code></h3>
-          <pre><span class="cm">// VULNERABLE — caller can do:
-// service.getGrades(1001).clear()</span>
-<span class="kw">public</span> List&lt;Grade&gt; getGrades(<span class="str">int</span> id) {
-  <span class="kw">return</span> grades.get(id); <span class="cm">// direct ref</span>
-}</pre>
-          <br>
-          <pre><span class="cm">// CORRECT — mutation blocked at call site</span>
-<span class="kw">public</span> List&lt;Grade&gt; getGrades(<span class="str">int</span> id) {
-  List&lt;Grade&gt; l = grades.get(id);
-  <span class="kw">return</span> l != <span class="kw">null</span>
-    ? Collections.unmodifiableList(l)
-    : Collections.emptyList();
-}</pre>
-        </div>
-        <div>
-          <h3>BuildAgent Detection Flow</h3>
-          <div class="flow" style="font-size:.78rem">
-            <div class="flow-step"><span class="label">mvn verify fails</span><span class="desc"><code>[ERROR] High: getGrades() EI_EXPOSE_REP</code></span></div>
-            <div class="flow-step"><span class="label">detectGate()</span><span class="desc"><code>"spotbugs-maven-plugin"</code> in output → gate = <code>spotbugs</code></span></div>
-            <div class="flow-step"><span class="label">extractErrors()</span><span class="desc">Collects <code>[ERROR]</code> lines</span></div>
-            <div class="flow-step"><span class="label">findAffectedFiles()</span><span class="desc">Regex → <code>GradeServiceImpl.java</code></span></div>
-            <div class="flow-step"><span class="label">callClaude()</span><span class="desc">Reads file, identifies <code>getGrades()</code>, applies fix</span></div>
-            <div class="flow-step"><span class="label" style="color:var(--green)">retry passes</span><span class="desc">SpotBugs gate green → exit 0</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="callout danger">
-        <strong>This regression actually happened:</strong> A previous BuildAgent commit reverted
-        <code>unmodifiableList()</code> to a direct return. SpotBugs caught it on the next
-        <code>mvn verify</code>. Every BuildAgent commit requires human code review before merging.
-      </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════ -->
-    <!-- SLIDE 19 — LEARNINGS                           -->
-    <!-- ══════════════════════════════════════════════ -->
-    <div class="slide">
-      <h2>15 · Learnings</h2>
+      <h2>14 · Learnings</h2>
       <div class="grid-3">
 
         <div class="card" style="border-color:var(--yellow)">
@@ -949,42 +985,6 @@ CVE-2025-22235    org.springframework.boot:spring-boot
             <li>Same gate can fail repeatedly in different builds</li>
             <li>No mechanism to recognise, escalate, or learn from recurring errors</li>
             <li>Each run starts cold — root causes persist</li>
-          </ul>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- ══════════════════════════════════════════════ -->
-    <!-- SLIDE 20 — NEXT STEPS                          -->
-    <!-- ══════════════════════════════════════════════ -->
-    <div class="slide">
-      <h2>16 · Next Steps</h2>
-      <div class="grid-2">
-
-        <div class="card" style="border-color:var(--accent)">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-            <h3>IAM &amp; API Authorization</h3>
-            <span class="tag tag-blue">Security</span>
-          </div>
-          <ul>
-            <li>REST API via Spring MVC — controller above <code>GradeService</code>, no impl changes</li>
-            <li>JWT / OAuth2 authentication on every request</li>
-            <li><code>@PreAuthorize("hasRole('TEACHER')")</code> on interface methods</li>
-            <li>Non-root Docker user, minimal base image, no debug ports</li>
-          </ul>
-        </div>
-
-        <div class="card" style="border-color:var(--purple)">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-            <h3>LangChain — Commit Memory</h3>
-            <span class="tag tag-purple">AI</span>
-          </div>
-          <ul>
-            <li>Index git log + BuildWrapper output into a vector store</li>
-            <li>Before calling Claude: retrieve similar past failures and their fixes</li>
-            <li>Closes the pattern-tracking gap — BuildWrapper gains persistent memory</li>
-            <li>Recurring patterns auto-proposed as new CLAUDE.md rules</li>
           </ul>
         </div>
 
