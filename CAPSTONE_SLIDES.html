@@ -384,7 +384,9 @@
       <div class="callout danger">
         <strong>This regression actually happened:</strong> A previous BuildAgent commit reverted
         <code>unmodifiableList()</code> to a direct return. SpotBugs caught it on the next
-        <code>mvn verify</code>. Every BuildAgent commit requires human code review before merging.
+        <code>mvn verify</code>. The CI workflow now enforces review structurally: BuildAgent pushes
+        to a <code>fix/&lt;gate&gt;</code> branch and opens a pull request with a review checklist —
+        the merge is impossible to skip.
       </div>
     </div>
 
