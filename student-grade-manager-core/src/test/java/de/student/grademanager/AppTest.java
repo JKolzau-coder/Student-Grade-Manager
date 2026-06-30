@@ -19,10 +19,21 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * Unit tests for {@link App}.
+ *
+ * <p>{@link de.student.grademanager.service.GradeService} is mocked via Mockito so that
+ * {@code App} can be tested in isolation without a Spring context.
+ */
 public class AppTest {
 
   private GradeService mockService;
 
+  /**
+   * Structural guard: {@code App} must be {@code final} to prevent SpotBugs
+   * {@code EI_EXPOSE_REP2} — a non-final class could be subclassed to expose
+   * internal mutable references that {@code App} holds via its service field.
+   */
   @BeforeClass
   public static void verifyAppIsFinal() {
     assertTrue(

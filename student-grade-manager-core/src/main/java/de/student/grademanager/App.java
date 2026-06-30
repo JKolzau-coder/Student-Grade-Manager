@@ -11,6 +11,14 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+/**
+ * Spring Boot entry point for the Student Grade Manager application.
+ *
+ * <p>On startup, a demo student is registered and two grades are recorded to
+ * verify that the service layer is wired correctly. An optional interactive
+ * session can be started via {@link #runInteractive(Scanner)} to capture
+ * real student data from the console.
+ */
 @SpringBootApplication
 public final class App implements CommandLineRunner {
   private static final Logger logger = LoggerFactory.getLogger(App.class);
@@ -18,14 +26,29 @@ public final class App implements CommandLineRunner {
   private final GradeService service;
   private int interactiveStudentId = -1;
 
+  /**
+   * Creates the application with the given grade service.
+   *
+   * @param service the grade service to use; injected by Spring
+   */
   public App(GradeService service) {
     this.service = service;
   }
 
+  /**
+   * Application entry point; delegates startup to Spring Boot.
+   *
+   * @param args command-line arguments passed through to Spring Boot
+   */
   public static void main(String[] args) {
     SpringApplication.run(App.class, args);
   }
 
+  /**
+   * Runs the demo scenario after the Spring context has started.
+   *
+   * @param args command-line arguments (not evaluated)
+   */
   @Override
   public void run(String... args) {
     logger.info("Student Grade Manager started");
@@ -40,6 +63,12 @@ public final class App implements CommandLineRunner {
     }
   }
 
+  /**
+   * Reads a student name, ID, subject, and grade value from the given scanner
+   * and registers the data via the grade service.
+   *
+   * @param scanner the input source to read from
+   */
   @SuppressWarnings("PMD.SystemPrintln")
   public void runInteractive(Scanner scanner) {
     try {
@@ -61,6 +90,12 @@ public final class App implements CommandLineRunner {
     }
   }
 
+  /**
+   * Prints a side-by-side comparison of the demo student and the student
+   * entered via {@link #runInteractive(Scanner)}.
+   *
+   * <p>Does nothing if no interactive student has been registered yet.
+   */
   public void printComparison() {
     if (interactiveStudentId == -1) {
       logger.warn("Kein interaktiver Student fuer Vergleich vorhanden");

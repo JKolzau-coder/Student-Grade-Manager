@@ -311,7 +311,7 @@ Is GradeService external to the class under test?
 
 ### Test Execution List
 
-**Mocked with Mockito — AppTest (8 tests)**
+**Mocked with Mockito — AppTest (9 tests)**
 
 | Test | What is verified |
 |---|---|
@@ -319,12 +319,20 @@ Is GradeService external to the class under test?
 | `runHandlesIllegalArgumentExceptionWithoutPropagating` | App catches and logs service exceptions |
 | `runCompletesWithinOneSecond` | App does not block — timeout: 1000ms |
 | `runInteractiveAddsStudentAndGradeFromScanner` | App parses stdin and delegates correctly |
+| `runInteractiveHandlesInvalidInputWithoutPropagating` | Non-numeric ID: service is never called |
 | `printComparisonLogsWarningWhenNoInteractiveStudent` | Guard branch: `verify(never())` |
 | `printComparisonRendersTableWithSingleAndEmptyGradeRows` | Table renders for unequal grade counts |
 | `printComparisonRendersMultipleGradeRows` | Table renders multiple grade rows per student |
 | `printComparisonLogsWarningWhenStudentNotFound` | Null-check branch: `getStudent()` returns null |
 
-**No mock — real classes (11 tests)**
+**Spring context — AppSmokeTest (2 tests)**
+
+| Test | What is verified |
+|---|---|
+| `contextLoadsAndGradeServiceIsWired` | Spring context starts and `GradeService` bean is present |
+| `mainMethodStartsWithoutException` | `App.main()` completes without throwing |
+
+**No mock — real classes (19 tests)**
 
 | Test | Class | Technique |
 |---|---|---|
@@ -336,9 +344,11 @@ Is GradeService external to the class under test?
 | `getStudentReturnsCorrectStudent` | `GradeServiceImpl` | Happy path |
 | `getGradesReturnsAddedGrades` | `GradeServiceImpl` | Content check |
 | `getGradesReturnsEmptyListForUnknownStudent` | `GradeServiceImpl` | Empty list |
+| `calculateAverageForUnknownStudentReturnsZero` | `GradeServiceImpl` | Unknown ID |
 | `multipleSubjectsAverageCorrectly` | `GradeServiceImpl` | 3-grade average |
 | `validGradeStoresCorrectly` / boundaries / null | `Grade` | Boundaries + null |
 | `constructorStoresNameAndStudentId` / null | `Student` | Happy + null |
+| `logbackVersionIsNotVulnerableToCve202142550` | `LogbackVersionTest` | CVE-2021-42550 regression guard |
 
 ### Test Coverage Distribution
 
@@ -347,11 +357,11 @@ Is GradeService external to the class under test?
 | `Grade` | 100% | 100% | 100% |
 | `Student` | 100% | 100% | 100% |
 | `GradeServiceImpl` | >90% | >85% | 100% |
-| `App` | >80% | >75% | >85% |
-| `App.main()` | 0% | — | 0% |
+| `App` | >80% | >75% | 100% |
 
-`App.main()` is the only 0% gap. Spring Boot bootstrap requires `@SpringBootTest`
-to cover — planned for M5.
+`App.main()` is covered by `AppSmokeTest` (`@SpringBootTest`), which was
+introduced in M5 to close the only remaining 0% gap. All public methods now
+have at least one test path.
 
 ---
 
@@ -635,7 +645,7 @@ Evidence that the project fulfills each architecture pattern:
 | Git workflow | 20% | Clean history, feature branches, conventional commits | `git log --oneline` |
 | Maven build | 15% | `mvn verify` green; all dependencies resolve | `mvn clean package` demo |
 | Code quality | 15% | 0 Checkstyle violations, 0 PMD violations, 0 SpotBugs | `mvn verify` output |
-| Test quality | 20% | 19 tests, >80% coverage, edge cases, meaningful assertions | JaCoCo report |
+| Test quality | 20% | 30 tests, >80% coverage, edge cases, meaningful assertions | JaCoCo report |
 | CI pipeline | 15% | GitHub Actions: compile → test → checkstyle → PMD → SpotBugs → Docker | GitHub Actions run |
 | Security | 10% | `.gitignore` excludes secrets; BuildAgent scoped to `Edit,Read,Bash`; `unmodifiableList` enforced | `spotbugs-exclude.xml` with rationale |
 | Bonus | +5% | Architecture checklist completed with evidence above | This section |

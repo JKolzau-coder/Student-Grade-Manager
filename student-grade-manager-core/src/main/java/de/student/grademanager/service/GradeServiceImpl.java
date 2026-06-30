@@ -1,15 +1,21 @@
 package de.student.grademanager.service;
 
+import de.student.grademanager.model.Grade;
+import de.student.grademanager.model.Student;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import de.student.grademanager.model.Grade;
-import de.student.grademanager.model.Student;
 import org.springframework.stereotype.Service;
 
+/**
+ * HashMap-backed implementation of {@link GradeService}.
+ *
+ * <p>All data is held in memory for the lifetime of the application context.
+ * Internal map consistency is guarded by {@code assert} statements; the JVM
+ * must be started with {@code -ea} for these guards to be active.
+ */
 @Service
 public class GradeServiceImpl implements GradeService {
   private final Map<Integer, Student> students = new HashMap<>();

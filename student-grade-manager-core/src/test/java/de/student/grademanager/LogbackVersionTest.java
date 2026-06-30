@@ -6,6 +6,13 @@ import static org.junit.Assert.assertTrue;
 import ch.qos.logback.classic.Logger;
 import org.junit.Test;
 
+/**
+ * Security regression test guarding against CVE-2021-42550.
+ *
+ * <p>CVE-2021-42550 allows JNDI injection via a malicious Logback configuration file
+ * in versions below 1.2.9. This test prevents silent downgrade through dependency
+ * management changes by failing the build if the resolved Logback version is vulnerable.
+ */
 public class LogbackVersionTest {
 
   private static final int SAFE_MAJOR = 1;

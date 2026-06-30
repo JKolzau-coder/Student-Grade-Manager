@@ -1,34 +1,39 @@
 # Student Grade Manager
 
-Java Maven-Anwendung zur Verwaltung von Studenten und deren Noten. Das Projekt folgt dem Maven-Archetype-Standard mit automatisierten Qualitätsprüfungen, CI/CD-Pipeline und kognitiver Entwicklungsunterstützung durch [cognitive-core](https://github.com/mindcockpit-ai/cognitive-core).
+Java Maven application for managing students and their grades. The project follows
+the Maven multi-module standard with automated quality gates, a CI/CD pipeline, and
+AI-assisted development via [cognitive-core](https://github.com/mindcockpit-ai/cognitive-core).
 
 ---
 
-## Projektstruktur
+## Project Structure
 
 ```
 student_grade_manager/
-├── pom.xml                              # Root-POM: Abhängigkeiten, Plugins, distributionManagement
-├── CLAUDE.md                            # Projektregeln für Claude Code
-├── cognitive-core.conf                  # cognitive-core Konfiguration
-├── owasp-suppressions.xml               # OWASP Dependency-Check Ausnahmen
+├── pom.xml                              # Parent POM: dependencies, plugins, distributionManagement
+├── CLAUDE.md                            # Project rules for Claude Code
+├── cognitive-core.conf                  # cognitive-core configuration
+├── owasp-suppressions.xml               # OWASP Dependency-Check suppressions
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                       # CI: parallele Quality Agents bei Push/PR
-│       └── release.yml                  # Release: JAR + GitHub Release bei Git-Tag
-└── student-grade-manager-core/          # Kernmodul
+│       ├── ci.yml                       # CI: parallel quality agents on push/PR
+│       └── release.yml                  # Release: JAR + GitHub Release on git tag
+└── student-grade-manager-core/          # Core module
     ├── pom.xml
+    ├── pmd-rules.xml                    # Project-specific PMD ruleset
     └── src/
         ├── main/java/de/student/grademanager/
-        │   ├── App.java                 # Einstiegspunkt
+        │   ├── App.java                 # Entry point (@SpringBootApplication)
         │   ├── model/
-        │   │   ├── Student.java         # Studenten-Entität
-        │   │   └── Grade.java           # Noten-Entität (validiert 1,0–5,0)
+        │   │   ├── Student.java         # Immutable student entity
+        │   │   └── Grade.java           # Immutable grade entity (validates 1.0–5.0)
         │   └── service/
-        │       ├── GradeService.java    # Interface
-        │       └── GradeServiceImpl.java
+        │       ├── GradeService.java    # Service interface
+        │       └── GradeServiceImpl.java # HashMap-backed implementation
         └── test/java/de/student/grademanager/
-            ├── AppTest.java
+            ├── AppTest.java             # Mockito — mocks GradeService
+            ├── AppSmokeTest.java        # @SpringBootTest — context + main()
+            ├── LogbackVersionTest.java  # CVE-2021-42550 regression guard
             ├── model/GradeTest.java
             ├── model/StudentTest.java
             └── service/GradeServiceTest.java
@@ -36,64 +41,76 @@ student_grade_manager/
 
 ---
 
-## Technologie-Stack
+## Technology Stack
 
-| Komponente | Version | Zweck |
+| Component | Version | Role |
 |---|---|---|
-| Java | 17 | Sprache |
-| Maven | 3.x | Build-Tool |
-| JUnit | 4.13.2 | Testframework |
-| Mockito | 5.14.2 | Mock-Objekte in Tests |
-| commons-lang3 | 3.14.0 | Hilfsmethoden |
-| SLF4J + Logback | 2.0.12 / 1.5.3 | Logging |
-| Checkstyle | 3.3.1 | Coding-Standards (Google Style) |
-| PMD | 3.21.2 | Statische Analyse |
-| SpotBugs | 4.9.8.3 | Bug-Erkennung |
-| OWASP Dependency Check | 9.2.0 | CVE-Scanning (CVSS ≥ 7 blockiert) |
+| Java | 17 | Language and runtime (LTS) |
+| Maven | 3.x | Build tool, dependency management |
+| Spring Boot | 3.3.5 | IoC container, `CommandLineRunner` |
+| JUnit | 4.13.2 | Test framework |
+| Mockito | 5.14.2 | Interface-level mocks |
+| SLF4J + Logback | via Spring BOM | Logging — replaces all `System.out.println` |
+| Gson | 2.11.0 | JSON serialization |
+| Commons Lang 3 | 3.14.0 | Utility library |
+| Checkstyle | 3.3.1 | Style enforcement — Google Style Guide |
+| PMD | 3.21.2 | Static analysis — unused vars, empty blocks |
+| SpotBugs | 4.9.8.3 | Bug pattern detection — null paths, mutable exposure |
+| JaCoCo | 0.8.12 | Test coverage — instruction ≥ 80%, branch ≥ 70% |
+| OWASP Dependency Check | 9.2.0 | CVE scanning — blocks CVSS ≥ 7 |
 
 ---
 
-## Build & Ausführen
+## Build & Run
 
 ```bash
-# Kompilieren
+# Compile only
 mvn compile -pl student-grade-manager-core -q
 
-# Tests ausführen
+# Run tests with coverage
 mvn test -pl student-grade-manager-core
 
-# Alle Quality Gates auf einmal
+# All quality gates at once
 mvn verify -pl student-grade-manager-core
 
-# JAR bauen und ausführen
+# Build and run the fat JAR
 mvn package -pl student-grade-manager-core
 java -jar student-grade-manager-core/target/student-grade-manager-core-1.0-SNAPSHOT.jar
+
+# Generate Javadoc site
+mvn javadoc:javadoc -pl student-grade-manager-core
+# → open student-grade-manager-core/target/site/apidocs/index.html
+
+# Open JaCoCo coverage report
+open student-grade-manager-core/target/site/jacoco/index.html
 ```
 
 ---
 
 ## Quality Gates
 
-Reihenfolge einhalten — jedes Gate ist Voraussetzung für das nächste:
+Run in order — each gate is a prerequisite for the next:
 
 ```bash
-mvn compile -pl student-grade-manager-core -q      # Gate 1: 0 Kompilierfehler
-mvn test -pl student-grade-manager-core             # Gate 2: 100 % Tests grün
-mvn checkstyle:check -pl student-grade-manager-core # Gate 3: 0 Style-Verstöße
-mvn pmd:check -pl student-grade-manager-core        # Gate 4: 0 PMD-Fehler
-mvn spotbugs:check -pl student-grade-manager-core   # Gate 5: 0 Bugs
+mvn compile -pl student-grade-manager-core -q       # Gate 1: no compilation errors
+mvn test -pl student-grade-manager-core              # Gate 2: 100% tests green
+mvn checkstyle:check -pl student-grade-manager-core  # Gate 3: 0 style violations
+mvn pmd:check -pl student-grade-manager-core         # Gate 4: 0 PMD violations
+mvn spotbugs:check -pl student-grade-manager-core    # Gate 5: 0 bug patterns
 ```
+
+`-DskipTests` is blocked by Maven Enforcer — there is no legitimate bypass.
 
 ---
 
 ## CI/CD
 
-| Workflow | Trigger | Aktion |
+| Workflow | Trigger | Action |
 |---|---|---|
-| `ci.yml` | Push auf `main`/`develop`, PR auf `main` | compile → [test, checkstyle, pmd, spotbugs] parallel |
-| `release.yml` | Git-Tag `v*` | `mvn verify` + JAR als GitHub Release |
+| `ci.yml` | Push to `main`/`develop`, PR to `main` | compile → [test, checkstyle, pmd, spotbugs] parallel |
+| `release.yml` | Git tag `v*` | `mvn verify` + JAR as GitHub Release |
 
-Release erstellen:
+Create a release:
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
@@ -101,36 +118,36 @@ git push origin v1.0.0
 
 ---
 
-## Architektur
+## Architecture
 
-Geschichtetes Modell (Layered Architecture) mit Interface + Adapter-Muster:
+Layered architecture with interface + adapter pattern:
 
 ```
-App (Einstiegspunkt)
- └── GradeService (Interface)
-      └── GradeServiceImpl
-           ├── Student (model)
-           └── Grade (model, validiert 1,0–5,0)
+App (@SpringBootApplication, CommandLineRunner)
+ └── GradeService (interface — defined before implementation)
+      └── GradeServiceImpl (@Service, HashMap-backed)
+           ├── Student (final, immutable entity)
+           └── Grade (final, immutable entity — validates 1.0–5.0)
 ```
 
-Paket: `de.student.grademanager` — Google Style Guide (2 Leerzeichen, max. 100 Zeichen/Zeile).
+Base package: `de.student.grademanager` — Google Style Guide (2-space indent, max 100 chars/line).
 
 ---
 
-## Codestil
+## Code Style
 
-| Element | Konvention |
+| Element | Convention |
 |---|---|
-| Klassen | `PascalCase` |
-| Methoden/Variablen | `camelCase` |
-| Konstanten | `UPPER_SNAKE_CASE` |
-| Pakete | Kleinbuchstaben |
-| Einrückung | 2 Leerzeichen |
-| Zeilenlänge | max. 100 Zeichen |
-| Logging | SLF4J + Logback (kein `System.out`) |
+| Classes, interfaces | `PascalCase` |
+| Methods, variables | `camelCase` |
+| Constants | `UPPER_SNAKE_CASE` |
+| Packages | lowercase, no underscores |
+| Indentation | 2 spaces |
+| Line length | max 100 characters |
+| Logging | SLF4J + Logback — `System.out.println` forbidden in production code |
 
 ---
 
-## Lizenz
+## License
 
-Privates Lehr- und Übungsprojekt.
+Private educational project.

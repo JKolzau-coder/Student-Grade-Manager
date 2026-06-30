@@ -11,6 +11,13 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+/**
+ * Unit tests for {@link GradeServiceImpl}.
+ *
+ * <p>Tests the real implementation directly — no mocks, because {@code GradeServiceImpl}
+ * is the class under test and mocking it would defeat the purpose. Each test creates
+ * a fresh instance in {@code @Before} to guarantee full isolation.
+ */
 public class GradeServiceTest {
 
   private GradeServiceImpl service;
@@ -56,6 +63,9 @@ public class GradeServiceTest {
   @Test
   @SuppressWarnings("unchecked")
   public void addGradeThrowsAssertionErrorWhenMapsOutOfSync() throws Exception {
+    // Reflection is the only way to reach this state: the public API always keeps
+    // `students` and `grades` in sync, so the assert guard in addGrade() can only
+    // be triggered by directly corrupting the private `students` map.
     Field studentsField = GradeServiceImpl.class.getDeclaredField("students");
     studentsField.setAccessible(true);
     Map<Integer, Student> students = (Map<Integer, Student>) studentsField.get(service);
