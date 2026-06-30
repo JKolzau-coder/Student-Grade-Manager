@@ -3,6 +3,13 @@ package de.student.grademanager.model;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
+/**
+ * Unit tests for {@link Grade}.
+ *
+ * <p>Tests the constructor directly — no mocks needed because {@code Grade} has no
+ * external dependencies. Covers valid values, lower and upper boundaries, and all
+ * invalid-input paths that must throw {@link IllegalArgumentException}.
+ */
 public class GradeTest {
 
   @Test
@@ -32,5 +39,10 @@ public class GradeTest {
   @Test(expected = IllegalArgumentException.class)
   public void gradeAboveMaximumThrowsException() {
     new Grade("Math", 5.1);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void nullSubjectThrowsException() {
+    new Grade(null, 2.0);
   }
 }

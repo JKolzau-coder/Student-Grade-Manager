@@ -3,18 +3,33 @@ package de.student.grademanager.service;
 import de.student.grademanager.model.Grade;
 import de.student.grademanager.model.Student;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Service;
 
+/**
+ * HashMap-backed implementation of {@link GradeService}.
+ *
+ * <p>All data is held in memory for the lifetime of the application context.
+ * Internal map consistency is guarded by {@code assert} statements; the JVM
+ * must be started with {@code -ea} for these guards to be active.
+ */
+@Service
 public class GradeServiceImpl implements GradeService {
   private final Map<Integer, Student> students = new HashMap<>();
   private final Map<Integer, List<Grade>> grades = new HashMap<>();
+  private final List<Student> studentList = new ArrayList<>();
 
   @Override
   public void addStudent(String name, int studentId) {
-    students.put(studentId, new Student(name, studentId));
+    Student student = new Student(name, studentId);
+    students.put(studentId, student);
+    studentList.add(student);
     grades.put(studentId, new ArrayList<>());
+    assert students.containsKey(studentId) && grades.containsKey(studentId)
+        : "addStudent left maps inconsistent for id " + studentId;
   }
 
   @Override
@@ -22,7 +37,9 @@ public class GradeServiceImpl implements GradeService {
     if (!students.containsKey(studentId)) {
       throw new IllegalArgumentException("Student not found: " + studentId);
     }
-    grades.get(studentId).add(new Grade(subject, value));
+    List<Grade> gradeList = grades.get(studentId);
+    assert gradeList != null : "grades map out of sync with students map for id " + studentId;
+    gradeList.add(new Grade(subject, value));
   }
 
   @Override
@@ -31,14 +48,33 @@ public class GradeServiceImpl implements GradeService {
     if (studentGrades == null || studentGrades.isEmpty()) {
       return 0.0;
     }
-    return studentGrades.stream()
+    double result = studentGrades.stream()
         .mapToDouble(Grade::getValue)
         .average()
         .orElse(0.0);
+    assert result >= 0.0 && result <= 5.0
+        : "calculateAverage produced out-of-range result: " + result;
+    return result;
   }
 
   @Override
   public boolean hasStudent(int studentId) {
     return students.containsKey(studentId);
+  }
+
+  @Override
+  public Student getStudent(int studentId) {
+    return students.get(studentId);
+  }
+
+  @Override
+  public List<Grade> getGrades(int studentId) {
+    List<Grade> list = grades.get(studentId);
+    return list != null ? list : Collections.emptyList();
+  }
+
+  @Override
+  public List<Student> getAllStudents() {
+    return Collections.unmodifiableList(studentList);
   }
 }
